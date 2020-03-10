@@ -1,0 +1,4 @@
+./program --print_plan 11 4 22 2 rennplaene/plan_11_22.html
+./program --print_plan 12 4 21 2 rennplaene/plan_12_21.html
+./program --print_plan 13 4 26 2 rennplaene/plan_13_26.html
+
