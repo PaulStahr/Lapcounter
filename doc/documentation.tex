@@ -1,0 +1,274 @@
+%Copyright (c) 2020 Paul Stahr
+
+%Permission is hereby granted, free of charge, to any person obtaining a copy
+%of this software and associated documentation files (the "Software"), to deal
+%in the Software without restriction, including without limitation the rights
+%to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+%copies of the Software, and to permit persons to whom the Software is
+%furnished to do so, subject to the following conditions:
+
+%The above copyright notice and this permission notice shall be included in all
+%copies or substantial portions of the Software.
+
+%THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+%IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+%FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+%AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+%LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+%OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+%SOFTWARE.
+
+\documentclass[11pt, a4paper, UKenglish, parskip=half+]{scrbook}
+\usepackage{verbatim}
+\usepackage{float}
+
+\newcommand{\slots}{slots}
+\renewcommand{\bf}{\textbf}
+\usepackage[siunitx]{circuitikz}
+\usepackage{tikz}
+\usetikzlibrary{fit}
+	\author{Paul Stahr}
+	\title{Lapcounter with Raspberry pi}
+\begin{document}
+\maketitle
+\chapter{Hardware}
+We used the raspberry pi 3 together with the official display. Other configurations were not tested but will work most propably without much configuration. Of course there are many different ways to detect if a car is driving through the start-line. We used a led which collects light which comes from above. Using the slot itself with a light barrier was promising but turned out to be not reliable.
+\section{Components}
+\begin{table}[H]
+\begin{tabular}{l l l}
+Item& Amount & Price\\\hline
+Raspberry Pi & 1\\
+7" Touchscreen Display & 1\\
+NE555 & \slots \\
+Resistor 100k & \slots \\
+Resistor 470$\Omega$ & \slots \\
+Led & \slots \\
+Phototransistor & \slots\\
+Green led & 1\\
+Bluetooth keyboard & (1) \\
+\end{tabular}
+\end{table}
+\ctikzset{bipoles/length=1cm} % Controls bipoles scale
+
+\section{Wiring Diagram}
+\begin{figure}[H]
+\begin{tikzpicture}[font=\small]
+
+\begin{scope}
+\def\TIMER555(#1)#2{%
+	\begin{scope}[shift={(#1)}]
+	\draw[fill=blue!10] (-1.5,-2) rectangle (1.5,2); % The body of IC
+	% Label and component identifier.
+%	\draw[blue] (2,2.5) node []{\large \bf U - #2}; % IC LABEL
+	\draw[blue] (0,0.5) node [align=center]{\large NE-555\\TIMER}; % IC LABEL
+	% Draw the pins
+	% Some that you have to learn about label nodes, draw lines, and name coordinates in Tikz
+	\draw (0.9,-2) node [above]{GND} -- +(0,-0.5) node [anchor=-45]{1} coordinate (#2 GND); % Pin 1 GND
+	\draw (-1.5,-1.5) node [right]{TRG} -- +(-0.5,0) node [anchor=-135]{2} coordinate (#2 TRG); % Pin 2 TRG
+	\draw (1.5,0) node [left]{OUT} -- +(0.5,0) node [anchor=-45]{3} coordinate (#2 OUT); % Pin 3 OUT  
+	\draw (0.9,2) node [below]{RESET} -- +(0,0.5) node [anchor=45]{4} coordinate (#2 RESET); % Pin 4 RESET
+	\draw (0,-2) node [above]{CTRL} -- +(0,-0.5) node [anchor=-45]{5} coordinate (#2 CTRL); % Pin 5 CTRL
+	\draw (-1.5,-.5) node [right]{THR} -- +(-0.5,0) node [anchor=-135]{6} coordinate (#2 THR); % Pin 6 THR
+	\draw (-1.5,1.5) node [right]{DIS} -- +(-0.5,0) node [anchor=-135]{7} coordinate (#2 DIS); % Pin 7 DIS
+	\draw (0,2) node [below]{$\mathsf{V_{CC}}$} -- +(0,0.5) node [anchor=45]{8} coordinate (#2 VCC); % Pin 8 VCC
+	\end{scope}
+}
+
+\draw[color=lightgray] (-4,-4.5) rectangle (3.5,4.0);
+\TIMER555(0,0){1}
+
+%Place polarization nodes:
+\draw (-4.5,3.5) node[ocirc] (VCC){} node[left]{$\mathsf{V_{CC}}$};
+\draw (-4.5,-4) node[ocirc] (GND){} node[left]{GND};
+\draw (-4.5,-1.5) node[ocirc] (INPUT){} node[left]{Input};
+\draw(VCC) % Start point
+to [short, o-] ++(1,0) coordinate (NOD1) % Use auxiliar coordinate (NOD1)
+to [R, l^=100k,*-*] (1 DIS -| NOD1) % to the point in the intersection between NOD1 and 1 DIS
+to [eC,l^=$4.7\mu$F,*-] ++(0,-2)
+to [short,-*] (GND -| NOD1)
+to [short] (GND);
+
+\draw(1 VCC) to [short, -*] (1 VCC |- NOD1);
+\draw(1 RESET) to [short] (1 RESET |- NOD1) to [short] (NOD1);
+\draw(1 DIS) to [short, -*] (1 DIS -| NOD1);
+\draw(1 THR) to [short] ++ (-0.5,0) coordinate (NOD2) to [short,-*] (1 DIS -| NOD2);
+\draw(1 CTRL) to [eC,l_=0.01nF, -*] (1 CTRL |- GND);
+\draw(1 GND) to [short] (1 GND |- GND) to [short] (GND -| NOD1);
+\draw(INPUT) to [short, -] (INPUT -| NOD1);
+\draw(1 TRG) to [short, *-] (INPUT -| NOD1);
+
+
+
+%Place input/output nodes
+%\draw[color=blue,line width=2] (1 TRG) to [short] ++(-0.55,0) node[ocirc] (TRG){} node[below]{Trigger};
+%\draw(1 TRG) to [short] ++(-2,0) (TRG){};
+\draw(1 TRG) to [eC,l_=0.01nF, -*] (1 TRG |- GND);
+\draw (1 OUT) to [R, l^=$10$k, -*] ++ (2,0) node[below]{Out};
+\draw (1 OUT) to [R,l^=1k, *-] ++ (0,-2) to [empty led] (1 OUT |- GND) to (GND);
+%\draw[color=red,line width=2] (1 OUT) to [short] ++(0.55,0) node[ocirc](OUT){} node[below]{Out};
+\end{scope}
+ \begin{scope}[shift={(-7,0)}]
+\draw[color=lightgray] (0.5,-0.5) rectangle (1.5,3.5);
+ \draw (0,0) node[ocirc] (GND){} node[left]{GND};
+ \draw (0,3) node[ocirc] (VCC){} node[left]{$\mathsf{V_{CC}}$};
+ \draw (0,1.5) node[ocirc] (OUT){} node[left]{Out};
+ \draw(VCC) to [short] ++ (1,0) to [empty photodiode] ++ (0,-1.5) to [R] ++(0,-1.5) to [short] (GND);
+ \draw (OUT) to [short, -*] ++ (1,0);
+ \end{scope}
+ \begin{scope}[shift={(0,5)}]
+\draw[color=lightgray] (0.5,-0.5) rectangle (2.5,10);
+\foreach \j/\namea/\cola/\nameb/\colb in {
+	0/3.3V/orange/5V/red,
+	1/GPIO 2/yellow/5V/red,
+	2/GPIO 3/yellow/GND/black,
+	3/GPIO 4/yellow/GPIO 14/yellow,
+	4/GND/black/GPIO 15/yellow,
+	5/GPIO 17/yellow/GPIO 18/yellow,
+	6/GPIO 27/yellow/GND/black,
+	7/GPIO 22/yellow/GPIO 23/yellow,
+	8/3.3V/orange/GPIO 25/yellow,
+	9/GPIO 10/black/GND/black,
+	10/GPIO 9/yellow/GPIO 25/yellow,
+	11/GPIO 11/yellow/GPIO 8/yellow,
+	12/GND/black/GPIO 7/yellow,
+	13/GPIO 0/yellow/GPIO 1/yellow,
+	14/GPIO 5/yellow/GND/black,
+	15/GPIO 6/yellow/GPIO 12/yellow,
+	16/GPIO 13/yellow/GND/black,
+	17/GPIO 19/yellow/GPIO 16/yellow,
+	18/GPIO 26/yellow/GPIO 20/yellow,
+	19/GND/black/GPIO 21/yellow}
+ 	%\foreach \j in {0,...,20}
+ 	{
+ 		\draw (1,9.5-\j/2) to [short,o-] (0,9.5-\j/2){} node[left]{\namea};
+ 		\draw (2,9.5-\j/2) to [short,o-] (3,9.5-\j/2){} node[right]{\nameb};
+ 		\fill[fill=\cola] (1,9.5-\j/2) circle(0.1);
+ 		\fill[fill=\colb] (2,9.5-\j/2) circle(0.1);
+ 	}
+ \end{scope}
+ 
+ \begin{scope}[shift={(-8,8)}]
+ 
+ \def\MT3608(#1)#2{%
+ 	\begin{scope}[shift={(#1)}]
+ 	\draw[fill=blue!10] (-1.5,-1.5) rectangle (1.5,0.5); % The body of IC
+ %	\draw[blue] (2,2.5) node []{\large \bf U - #2}; % IC LABEL
+ 	\draw[blue] (0,-0.5) node [align=center]{\large MT3608\\Step Up}; % IC LABEL
+ 	\draw (-1.5,-1) node [right]{GND} -- +(-0.5,0) node [anchor=-135]{} coordinate (#2 GND); % Pin 2 TRG
+ 	\draw (1.5,0) node [left]{VOUT} -- +(0.5,0) node [anchor=-45]{} coordinate (#2 VOUT); % Pin 3 OUT  
+ 	\draw (1.5,-1) node [left]{GND} -- +(0.5,0) node [anchor=-45]{} coordinate (#2 GNDD); % Pin 3 OUT  
+ 	\draw (-1.5,0) node [right]{V$_{CC}$} -- +(-0.5,0) node [anchor=-135]{} coordinate (#2 VIN); % Pin 7 DIS
+ 	\end{scope}
+ }
+
+\def\LEDSTRIPE(#1)#2{%
+	\begin{scope}[shift={(#1)}]
+	\draw[fill=blue!10] (-1.5,-1.5) rectangle (1,0.5); % The body of IC
+	%	\draw[blue] (2,2.5) node []{\large \bf U - #2}; % IC LABEL
+	\draw[blue] (0,-0.5) node [align=center]{\large LED\\STRIPE}; % IC LABEL
+	\draw (-1.5,-1) node [right]{GND} -- +(-0.5,0) node [anchor=-135]{} coordinate (#2 GND); % Pin 2 TRG
+	\draw (-1.5,0) node [right]{VIN} -- +(-0.5,0) node [anchor=-135]{} coordinate (#2 VIN); % Pin 7 DIS
+	\end{scope}
+}
+\MT3608(0,0){1} 
+\LEDSTRIPE(4,0){2} 
+\draw[color=lightgray] (-2,-2) rectangle (5.5,1);
+\draw(1 VIN) to [short, -*] ++(-0.5,0);
+\draw(1 GND) to [short, -*] ++(-0.5,0);
+\draw(1 VOUT) to [short, -] (2 VIN);
+\draw(1 GNDD) to [short, -] (2 GND);
+
+ \end{scope}
+
+\end{tikzpicture}
+\end{figure}
+\begin{tikzpicture}
+
+\draw[very thick,rounded corners] 
+(-.2,.2) -- (8.2,0.2) -- (8.2,-1.2) -- (7.2,-2.2) -- (0.8,-2.2) -- (-.2,-1.2) -- cycle;
+\draw[thin,rounded corners] 
+(-.1,.1) -- (8.1,0.1) -- (8.1,-1.1) -- (7.1,-2.1) -- (0.9,-2.1) -- (-.1,-1.1) -- cycle;
+\fill[gray!20, draw=black, very thick,rounded corners] 
+(0,0) -- (8,0) -- (8,-1) -- (7,-2) -- (1,-2) -- (0,-1) -- cycle;
+
+\draw[thick] (2,.2) -- ( 2.1,.28) -- (2.4,.28) -- (2.5,.2);
+\draw[thick] (3.75,.2) -- ( 3.85,.28) -- (4.15,.28) -- (4.25,.2);
+\draw[thick] (6,.2) -- ( 5.9,.28) -- (5.6,.28) -- (5.5,.2);
+
+\filldraw[fill=white, draw=black] (2,-.01) rectangle (6,-1);
+\filldraw[fill=white, draw=black] (1,.9)   rectangle (1.6,0.22);
+\filldraw[fill=white, draw=black] (6.4,.9) rectangle (7,0.22);
+\filldraw[fill=yellow, draw=black] (2.2,-.5) rectangle node[yshift=1.6cm]{\Large 5} (2.6,-1.3) ;
+\filldraw[fill=white, draw=black]  (2.2,-1.3) rectangle (2.6,-1.6);
+\filldraw[fill=yellow, draw=black] (3.0,-.5) rectangle node[yshift=1.6cm]{\Large 4} (3.4,-1.3);
+\filldraw[fill=white, draw=black]  (3.0,-1.3) rectangle (3.4,-1.6);
+\filldraw[fill=yellow, draw=black] (3.8,-.5) rectangle node[yshift=1.6cm]{\Large 3} (4.2,-1.3);
+\filldraw[fill=white, draw=black]  (3.8,-1.3) rectangle (4.2,-1.6);
+\filldraw[fill=yellow, draw=black] (4.6,-.5) rectangle node[yshift=1.6cm]{\Large 2}(5.0,-1.3);
+\filldraw[fill=white, draw=black]  (4.6,-1.3) rectangle (5.0,-1.6);
+\filldraw[fill=yellow, draw=black] (5.4,-.5) rectangle node[yshift=1.6cm]{\Large 1} (5.8,-1.3);
+\filldraw[fill=white, draw=black]  (5.4,-1.3) rectangle (5.8,-1.6);
+\node at (4,-2.8) {\textbf{Micro USB Male connector}};
+%\node at (2.2, .8) {\textbf{5}}; \node at (3, .8) {\textbf{4}}; \node at (3.8, .8) {\textbf{3}}; \node at (4.6, .8) {\textbf{2}}; \node at (5.4, .8) {\textbf{1}};
+\end{tikzpicture}
+\begin{comment}
+	
+\begin{tikzpicture}[scale=2]
+  \draw[color=black, thick]
+  \foreach \i in {0,...,1}
+  {
+  	\foreach \j in {0,...,20}
+  	{
+  		(\i/4,\j/4) to [short,o-] (\i/4,\j/4){}
+  	}
+  }
+  
+    (1,0) to [short,o-] (6,0){} % Baseline for connection to ground
+    % Input and ground
+    (0,1) node[]{\large{\textbf{RASPBERRY PI}}}
+    % Connection of passive components
+    (5,0) node[ground]{} node[circ](4.5,0){}
+    (0,2) to [pC, l=$C_1$, o-] (0.5,2)
+    to [R,l=$R_1$,](1.5,2)
+    to node[short]{}(2.6,2)
+    (1.5,2) to [C, l=$C_2$, *-] (1.5,3) -| (5,3)
+    (2.2,2) to [R, l=$R_2$, *-*] (2.2,3)
+    (2.2,3) to [pC, l=$C_3$, *-] (2.2,5) -| (3,5)
+    % Transistor Bipolar Q1
+    (3,0) to [R,l=$R_5$,-*] (3,1.5)
+    to [Tnpn,n=npn1] (3,2.5)
+    (npn1.E) node[right=3mm, above=5mm]{$Q_1$} % Labelling the NPN transistor
+    (4,0) to [pC, l_=$C_4$, *-] (4, 1.5)--(3,1.5)
+    (2.2,0) to [vR, l=$R_3$, *-*] (2.2,2)
+    (3,2.5) to node[short]{}(3,3)
+    (3,5) to [pR, n=pot1, l_=$R_4$, *-] (3,3)
+    (3,5) to [R, l=$R_6$, *-] (5,5)
+    to [short,*-o](5,5.5) node[right]{$V_S=40 V$}
+    % Mosfet Transistors
+    (5,3) to [Tnigfetd,n=mos1] (5,5)
+    (mos1.B) node[anchor=west]{$Q_2$} % Labelling MOSFET Q2 Transistor
+    (pot1.wiper)  to [R, l=$R_7$] (4.5,4) -| (mos1.G)
+    (5,1.5) to [Tpigfetd,n=mos2] (5,2.5)
+    (5,0) to (mos2.S)
+    (3,2.5) to [R, l=$R_8$, *-] (4.5,2.5)
+    -| (mos2.G)
+    (mos2.B) node[anchor=west]{$Q_3$} % Labelling MOSFET Q3 Transistor
+    % Output
+    (6,3) to [pC, l=$C_5$,-*](5,3)
+    (6,3) to [short,-o] (6,2){}
+    (mos1.S)--(mos2.D)
+    (6,0) to [short,-o] (6,1){} node[above=7mm]{\large{\textbf{SPEAKER}}}
+    ;
+\end{tikzpicture}
+\end{comment}
+\chapter{Software}
+\section{Compiling}
+The program uses Allegro to show the results. In theory it should be possible to use it on any machine, which supports linux and opengl, I tested it on a x86 platform and on the raspberry pi. If not already done you have to install the following packages:
+\section{Fast Race}
+
+\section{Tournee Planer}
+The program contains a simple algorithm to calculate plans for tournees. You can adjust the numbers of players, slots, races and equaly hard slots. Keep in mind, that mathematically not all combinations of input can work.
+\section{Settings}
+\section{Network access}
+Connecting to the server will return you a Html-document containing the most important data.
+\end{document}

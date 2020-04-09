@@ -3,6 +3,7 @@ CFLAGS += -DNDEBUG
 
 SRC := src
 BUILT := built
+DOC := doc
 
 UNAME := $(shell uname -m)
 ifeq ($(UNAME), armv7l)
@@ -52,6 +53,9 @@ $(BUILT)/main.o: $(SRC)/main.cpp
 
 $(BUILT)/mainpi.o: $(SRC)/main.cpp
 	g++ -c $(SRC)/main.cpp -g $(CFLAGS) $(allegro-config --libs) -DRASPBERRY_PI -o $(BUILT)/mainpi.o
+
+$(DOC)/documentation.pdf: $(DOC)/documentation.tex
+	pdflatex $(DOC)/documentation.tex -output-directory $(DOC}/
 
 program: $(BUILT)/main.o $(BUILT)/tournee_plan.o $(BUILT)/firework.o $(BUILT)/serialize.o $(BUILT)/data.o $(BUILT)/loghtml.o $(BUILT)/server.o $(BUILT)/query_performance_counter.o $(BUILT)/tournee_plan_creator.o $(BUILT)/performance_counter.o $(BUILT)/tournee_plan_brute_force_creator.o $(BUILT)/tournee_plan_approximation_creator.o
 	g++ $(BUILT)/tournee_plan.o $(BUILT)/firework.o $(BUILT)/main.o $(BUILT)/serialize.o $(BUILT)/data.o $(BUILT)/loghtml.o $(BUILT)/server.o $(BUILT)/query_performance_counter.o $(BUILT)/tournee_plan_creator.o $(BUILT)/performance_counter.o $(BUILT)/tournee_plan_brute_force_creator.o $(BUILT)/tournee_plan_approximation_creator.o -g $(CFLAGS) $(allegro-config --libs) -lallegro $(ALLEGRO_FLAGS) -lboost_thread -lboost_system -lglut -lGL -o program
