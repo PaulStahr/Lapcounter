@@ -36,11 +36,11 @@ SOFTWARE.
 #include <fstream>
 #include "server.h"
 #include "loghtml.h"
-#include "./tournee_plan.h"
-#include "./tournee_plan_approximation_creator.h"
-#include "./tournee_plan_creator.h"
-#include "./data.h"
-#include "./performance_counter.h"
+#include "tournee_plan.h"
+#include "tournee_plan_approximation_creator.h"
+#include "tournee_plan_creator.h"
+#include "data.h"
+#include "performance_counter.h"
 #include "firework.h"
 #ifdef RASPBERRY_PI
 extern "C" {
@@ -148,10 +148,10 @@ public:
     
     void call(InputEvent const & event)
     {
-        last_event = event;
         std::unique_lock<std::mutex> lck(mtx);
+        last_event = event;
         cv.notify_all();
-        for (std::function<void (InputEvent const &)> callback : callbacks)
+        for (std::function<void (InputEvent const &)> & callback : callbacks)
         {
             callback(event);
         }
@@ -206,13 +206,55 @@ void allegro_input_task(InputHandler *handler)
 {
     ALLEGRO_EVENT_QUEUE *event_queue = al_create_event_queue();
     al_register_event_source(event_queue, al_get_keyboard_event_source());
+    al_register_event_source(event_queue, al_get_mouse_event_source());
+    al_register_event_source(event_queue, al_get_joystick_event_source());
     while (handler->is_valid())
     {
         ALLEGRO_EVENT ev;
         al_wait_for_event(event_queue, &ev);
-        if (ev.type == ALLEGRO_EVENT_KEY_DOWN)
+        Destination dest = DUNDEF;
+        size_t buttonSize = 40;
+        if (ev.type == ALLEGRO_EVENT_JOYSTICK_BUTTON_DOWN)
         {
-            Destination dest = DUNDEF;
+            switch (ev.joystick.button)
+            {
+                case 0:  dest = DDOWN;break;
+                case 1:    dest = DUP;break;
+                case 2:  dest = DLEFT;break;
+                case 3: dest = DRIGHT;break;
+                case 4:dest = DBACK;break;
+                case 5: dest = DENTER;break;
+                case 6:     dest = DSENSOR0;break;
+                case 7:     dest = DSENSOR1;break;
+                case 8:     dest = DSENSOR2;break;
+                case 9:     dest = DSENSOR3;break;
+            }
+        }
+        if (ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN)
+        {
+            int x = ev.mouse.x, y = ev.mouse.y;
+            std::cout << x / buttonSize << ' ' << y / buttonSize << std::endl;
+            if (y /buttonSize == 0)
+            {
+                switch (x / buttonSize)
+                {
+                    case 0:dest = DLEFT;break;
+                    case 1:dest = DDOWN;break;
+                    case 2:dest = DRIGHT;break;  
+                }
+            }
+            else if (y / buttonSize == 1)
+            {
+                switch (x / buttonSize)
+                {
+                    case 0:dest = DENTER;break;
+                    case 1:dest = DUP;break;
+                    case 2:dest = DBACK;break;  
+                }
+            }
+        }
+        else if (ev.type == ALLEGRO_EVENT_KEY_DOWN)
+        {
             //ev.key_shifts;
             switch(ev.keyboard.keycode) {
                 case ALLEGRO_KEY_DOWN:  dest = DDOWN;break;
@@ -240,10 +282,10 @@ void allegro_input_task(InputHandler *handler)
                     dest = static_cast<Destination>(dest + DNSENSOR0 - DSENSOR0);
                 }
             }
-            if (dest != DUNDEF)
-            {
-                handler->call(InputEvent(dest, QueryPerformanceCounter()));
-            }
+        }
+        if (dest != DUNDEF)
+        {
+            handler->call(InputEvent(dest, QueryPerformanceCounter()));
         }
     }
     al_destroy_event_queue(event_queue);
@@ -380,6 +422,8 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
     al_init_font_addon();
     al_init_ttf_addon();
     al_install_keyboard();
+    al_install_joystick();
+    al_install_mouse();
     if(!al_install_audio()){
         fprintf(stderr, "failed to initialize audio!\n");
         return nullptr;
