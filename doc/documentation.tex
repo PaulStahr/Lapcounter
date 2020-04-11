@@ -21,7 +21,7 @@
 \documentclass[11pt, a4paper, UKenglish, parskip=half+]{scrbook}
 \usepackage{verbatim}
 \usepackage{float}
-
+\usepackage{wrapfig}
 \newcommand{\slots}{slots}
 \renewcommand{\bf}{\textbf}
 \usepackage[siunitx]{circuitikz}
@@ -47,10 +47,47 @@ Phototransistor & \slots\\
 Green led & 1\\
 Bluetooth keyboard & (1) \\
 \end{tabular}
+\caption{Table of components}
 \end{table}
+
 \ctikzset{bipoles/length=1cm} % Controls bipoles scale
 
 \section{Wiring Diagram}
+To connect the display power, the illumination and the senors we will use the gpio of the raspberry pi. For the connection between photodiode to the input-circuit and the connection between the step-up transformer and the raspberry pi I used regular usb-cables, which makes it easy to change the setup if you need longer cables at some point. The circuit ... pulls the voltage down for a defined amount of time, and doesn't allow retriggering during this time. In theory it would be possible to connect the raspberry pi directly to the photodiode, but I have not tested it. Also there would be some drawbacks. First you would be dependent on hardware interrupts, because a polling approach could miss the time when the light barrier is interrupted. Secondly this solution is much easier to debug, because you can see if an input was triggered.
+\begin{wrapfigure}{r}{0.4\textwidth}
+	\begin{tikzpicture}
+	\draw[color=lightgray] (0.5,-0.5) rectangle (2.5,10);
+	\foreach \j/\namea/\cola/\nameb/\colb in {
+		0/3.3V/orange/5V/red,
+		1/GPIO 2/yellow/5V/red,
+		2/GPIO 3/yellow/GND/black,
+		3/GPIO 4/yellow/GPIO 14/yellow,
+		4/GND/black/GPIO 15/yellow,
+		5/GPIO 17/yellow/GPIO 18/yellow,
+		6/GPIO 27/yellow/GND/black,
+		7/GPIO 22/yellow/GPIO 23/yellow,
+		8/3.3V/orange/GPIO 25/yellow,
+		9/GPIO 10/black/GND/black,
+		10/GPIO 9/yellow/GPIO 25/yellow,
+		11/GPIO 11/yellow/GPIO 8/yellow,
+		12/GND/black/GPIO 7/yellow,
+		13/GPIO 0/yellow/GPIO 1/yellow,
+		14/GPIO 5/yellow/GND/black,
+		15/GPIO 6/yellow/GPIO 12/yellow,
+		16/GPIO 13/yellow/GND/black,
+		17/GPIO 19/yellow/GPIO 16/yellow,
+		18/GPIO 26/yellow/GPIO 20/yellow,
+		19/GND/black/GPIO 21/yellow}
+	%\foreach \j in {0,...,20}
+	{
+		\draw (1,9.5-\j/2) to [short,o-] (0,9.5-\j/2){} node[left]{\namea};
+		\draw (2,9.5-\j/2) to [short,o-] (3,9.5-\j/2){} node[right]{\nameb};
+		\fill[fill=\cola] (1,9.5-\j/2) circle(0.1);
+		\fill[fill=\colb] (2,9.5-\j/2) circle(0.1);
+	}
+	\end{tikzpicture}
+\caption{Raspberry pi pinlayout}	
+\end{wrapfigure}
 \begin{figure}[H]
 \begin{tikzpicture}[font=\small]
 
@@ -115,39 +152,8 @@ to [short] (GND);
  \draw(VCC) to [short] ++ (1,0) to [empty photodiode] ++ (0,-1.5) to [R] ++(0,-1.5) to [short] (GND);
  \draw (OUT) to [short, -*] ++ (1,0);
  \end{scope}
- \begin{scope}[shift={(0,5)}]
-\draw[color=lightgray] (0.5,-0.5) rectangle (2.5,10);
-\foreach \j/\namea/\cola/\nameb/\colb in {
-	0/3.3V/orange/5V/red,
-	1/GPIO 2/yellow/5V/red,
-	2/GPIO 3/yellow/GND/black,
-	3/GPIO 4/yellow/GPIO 14/yellow,
-	4/GND/black/GPIO 15/yellow,
-	5/GPIO 17/yellow/GPIO 18/yellow,
-	6/GPIO 27/yellow/GND/black,
-	7/GPIO 22/yellow/GPIO 23/yellow,
-	8/3.3V/orange/GPIO 25/yellow,
-	9/GPIO 10/black/GND/black,
-	10/GPIO 9/yellow/GPIO 25/yellow,
-	11/GPIO 11/yellow/GPIO 8/yellow,
-	12/GND/black/GPIO 7/yellow,
-	13/GPIO 0/yellow/GPIO 1/yellow,
-	14/GPIO 5/yellow/GND/black,
-	15/GPIO 6/yellow/GPIO 12/yellow,
-	16/GPIO 13/yellow/GND/black,
-	17/GPIO 19/yellow/GPIO 16/yellow,
-	18/GPIO 26/yellow/GPIO 20/yellow,
-	19/GND/black/GPIO 21/yellow}
- 	%\foreach \j in {0,...,20}
- 	{
- 		\draw (1,9.5-\j/2) to [short,o-] (0,9.5-\j/2){} node[left]{\namea};
- 		\draw (2,9.5-\j/2) to [short,o-] (3,9.5-\j/2){} node[right]{\nameb};
- 		\fill[fill=\cola] (1,9.5-\j/2) circle(0.1);
- 		\fill[fill=\colb] (2,9.5-\j/2) circle(0.1);
- 	}
- \end{scope}
  
- \begin{scope}[shift={(-8,8)}]
+ \begin{scope}[shift={(-2,6.5)}]
  
  \def\MT3608(#1)#2{%
  	\begin{scope}[shift={(#1)}]
@@ -179,9 +185,10 @@ to [short] (GND);
 \draw(1 GNDD) to [short, -] (2 GND);
 
  \end{scope}
-
 \end{tikzpicture}
+\caption{Wiring digram}
 \end{figure}
+\begin{comment}
 \begin{tikzpicture}
 
 \draw[very thick,rounded corners] 
@@ -211,6 +218,33 @@ to [short] (GND);
 \node at (4,-2.8) {\textbf{Micro USB Male connector}};
 %\node at (2.2, .8) {\textbf{5}}; \node at (3, .8) {\textbf{4}}; \node at (3.8, .8) {\textbf{3}}; \node at (4.6, .8) {\textbf{2}}; \node at (5.4, .8) {\textbf{1}};
 \end{tikzpicture}
+\end{comment}
+\begin{figure}[H]
+\begin{tikzpicture}%[scale=0.5, transform shape]
+\filldraw[fill=white, draw=black, rounded corners] (-2.1,0.1) rectangle (2.1,-1.5);
+\filldraw[fill=lightgray, draw=black, rounded corners] (-2.0,0) rectangle (2.0,-1.4);
+\filldraw[fill=gray, draw=black, rounded corners] (-2,0) rectangle (2,-0.8);
+\foreach \i/\t in {-1.5/-,-0.5/D+,0.5/D-,1.5/+}
+{
+\filldraw[fill=yellow, draw=black] (\i-0.3,-.7) rectangle node[yshift=1.6cm]{\t} (\i+0.3,-0.9) ;
+}
+\node at (0,-2) {\textbf{Type-A}};
+\end{tikzpicture}
+\begin{tikzpicture}%[scale=0.5, transform shape]
+\fill[fill=white, draw=black,rounded corners] 
+(-1.6,0.2) -- (1.6,0.2) -- (2.6,-0.5) -- (2.6,-1.5) -- (-2.6,-1.5) -- (-2.6,-0.5) -- cycle;
+\fill[fill=lightgray, draw=black,rounded corners] 
+(-1.5,0.1) -- (1.5,0.1) -- (2.5,-0.6) -- (2.5,-1.4) -- (-2.5,-1.4) -- (-2.5,-0.6) -- cycle;
+\fill[fill=gray, draw=black,rounded corners] 
+(-1.5,0.1) -- (1.5,0.1) -- (2.5,-0.6) -- (2.5,-0.8) -- (-2.5,-0.8) -- (-2.5,-0.6) -- cycle;
+\foreach \i/\t in {-2/-,-1/ID,0/D+,1/D-,2/+}
+{
+	\filldraw[fill=yellow, draw=black] (\i-0.3,-.7) rectangle node[yshift=1.6cm]{\t} (\i+0.3,-0.9) ;
+}
+\node at (0,-2) {\textbf{Mini-A}};
+\end{tikzpicture}
+\caption{USB-Pins}
+\end{figure}
 \begin{comment}
 	
 \begin{tikzpicture}[scale=2]
