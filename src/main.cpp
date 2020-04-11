@@ -55,6 +55,7 @@ extern "C" {
 ALLEGRO_FONT *font_small;
 ALLEGRO_FONT *font;
 ALLEGRO_FONT *font_big;
+ALLEGRO_FONT *font_control;
 ALLEGRO_BITMAP* car_bitmaps[4];
 ALLEGRO_SAMPLE *sample;
 ALLEGRO_SAMPLE *sample2;
@@ -66,6 +67,7 @@ ALLEGRO_COLOR FOREGROUND_COLOR;
 ALLEGRO_COLOR SELECTION_COLOR;
 ALLEGRO_COLOR ERROR_COLOR;
 ALLEGRO_COLOR COLOR_RED;
+ALLEGRO_COLOR COLOR_GRAY;
 ALLEGRO_COLOR COLOR_GREEN;
 ALLEGRO_COLOR COLOR_YELLOW;
 WebServer server;
@@ -202,6 +204,27 @@ void sensor_poll_input_task(InputHandler *handler)
 }
 #endif
 
+
+struct overlay_button
+{
+    uint16_t _x,_y,_w,_h;
+    const char *_str;
+    Destination _dest;
+    overlay_button(uint16_t x_, uint16_t y_, uint16_t w_, uint16_t h_, const char *str_, Destination dest_): _x(x_), _y(y_), _w(w_), _h(h_), _str(str_), _dest(dest_){}
+};
+
+
+static const overlay_button buttons[6] = {
+    overlay_button(0,1,1,1,"\u2190",DLEFT),
+    overlay_button(1,0,1,1,"\u2191",DUP),
+    overlay_button(2,1,1,1,"\u2192",DRIGHT),
+    overlay_button(1,2,1,1,"\u2193",DDOWN),
+    overlay_button(0,0,1,1,"\u25C4",DBACK),
+  //  overlay_button(1,1,1,1,"\u2B24",DENTER),
+  //  overlay_button(1,1,1,1,"\u25CF",DENTER),
+    overlay_button(1,1,1,1,"\u2022",DENTER)
+};
+
 void allegro_input_task(InputHandler *handler)
 {
     ALLEGRO_EVENT_QUEUE *event_queue = al_create_event_queue();
@@ -232,24 +255,14 @@ void allegro_input_task(InputHandler *handler)
         }
         if (ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN)
         {
-            int x = ev.mouse.x, y = ev.mouse.y;
-            std::cout << x / buttonSize << ' ' << y / buttonSize << std::endl;
-            if (y /buttonSize == 0)
+            int x = ev.mouse.x / buttonSize, y = ev.mouse.y / buttonSize;
+            for (overlay_button const & bt : buttons)
             {
-                switch (x / buttonSize)
+                
+                if (bt._x <= x && bt._y <= y && bt._x + bt._w > x && bt._y + bt._h > y)
                 {
-                    case 0:dest = DLEFT;break;
-                    case 1:dest = DDOWN;break;
-                    case 2:dest = DRIGHT;break;  
-                }
-            }
-            else if (y / buttonSize == 1)
-            {
-                switch (x / buttonSize)
-                {
-                    case 0:dest = DENTER;break;
-                    case 1:dest = DUP;break;
-                    case 2:dest = DBACK;break;  
+                    dest = bt._dest;
+                    break;
                 }
             }
         }
@@ -289,6 +302,17 @@ void allegro_input_task(InputHandler *handler)
         }
     }
     al_destroy_event_queue(event_queue);
+}
+
+void draw_screen_keyboard()
+{
+    for (overlay_button const & bt : buttons)
+    {
+        int x = bt._x * 40 + 5;
+        int y = bt._y * 40 + 5;
+        al_draw_filled_rectangle(x,y,x+30,y+30, COLOR_GRAY);
+        al_draw_text(font, FOREGROUND_COLOR, x + 15, y-20,  ALLEGRO_ALIGN_CENTER, bt._str);   
+    }
 }
 
 int main(int argc, const char* argv[]){
@@ -450,6 +474,7 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
     font_small = al_load_ttf_font("fonts/courbd.ttf",30,0 );
     font = al_load_ttf_font("fonts/courbd.ttf",50,0 );
     font_big = al_load_ttf_font("fonts/courbd.ttf",70,0 );
+    font_control = al_load_ttf_font("fonts/courbd.ttf",50,0 );
     display_height = al_get_display_height(display);
     display_width = al_get_display_width(display);
     FOREGROUND_COLOR = al_map_rgb(255,255,255);
@@ -457,6 +482,7 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
     SELECTION_COLOR = al_map_rgb(255,255,0);
     ERROR_COLOR = al_map_rgb(255,0,0);
     COLOR_RED = al_map_rgb(255,0,0);
+    COLOR_GRAY = al_map_rgb(128,128,128);
     COLOR_GREEN = al_map_rgb(0,255,0);
     COLOR_YELLOW = al_map_rgb(255,255,0);
     
@@ -604,6 +630,7 @@ int menu(InputHandler & input){
         al_draw_text(font, selected == 1 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 200,ALLEGRO_ALIGN_CENTRE, "Tournier");
         al_draw_text(font, selected == 2 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 300,ALLEGRO_ALIGN_CENTRE, "Options");
         al_draw_text(font, selected == 3 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 400,ALLEGRO_ALIGN_CENTRE, "Shutdown");
+        draw_screen_keyboard();
         al_flip_display();
         
         InputEvent event = input.wait_for_event();
@@ -642,6 +669,7 @@ int tournee(InputHandler & input){
             al_draw_text(font, ERROR_COLOR, display_width/2, row_height * 6, ALLEGRO_ALIGN_CENTRE, "WARNUNG: Nicht alle Spieler koennen gleich oft spielen");
         else if (slots%equal_slots != 0)
             al_draw_text(font, ERROR_COLOR, display_width/2, row_height * 6, ALLEGRO_ALIGN_CENTRE, "WARNUNG: Bahnen muessen vielfaches von gleichschweren Bahnen sein");
+        draw_screen_keyboard();
         al_flip_display();
         InputEvent event = input.wait_for_event();
         switch(event._dest)
@@ -691,6 +719,7 @@ int options(InputHandler & input){
         {
             al_draw_textf(font, selected == i ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, row_height * (i + 1),ALLEGRO_ALIGN_CENTRE, "InputPin0 %u", static_cast<uint32_t>(input_pins[i]));
         }
+        draw_screen_keyboard();
         al_flip_display();
         InputEvent event = input.wait_for_event();
         switch (event._dest)
@@ -768,6 +797,7 @@ int fast_race(InputHandler & input){
         al_draw_textf(font, selected == 0 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 100,ALLEGRO_ALIGN_CENTRE, "Spieler: %d", player);
         al_draw_textf(font, selected == 1 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 200,ALLEGRO_ALIGN_CENTRE, "Runden:  %d", rounds);
         al_draw_text(font, selected == 2 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 300,ALLEGRO_ALIGN_CENTRE, "START");
+        draw_screen_keyboard();
         al_flip_display();
         InputEvent event = input.wait_for_event();
         switch(event._dest)
