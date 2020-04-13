@@ -642,25 +642,27 @@ int menu(InputHandler & input){
     int selected = 0;
     while (true){
         al_clear_to_color(BACKGROUND_COLOR);
-        al_draw_text(font, selected == 0 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 100,ALLEGRO_ALIGN_CENTRE, "Schnelles Rennen");
-        al_draw_text(font, selected == 1 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 200,ALLEGRO_ALIGN_CENTRE, "Tournier");
-        al_draw_text(font, selected == 2 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 300,ALLEGRO_ALIGN_CENTRE, "Options");
-        al_draw_text(font, selected == 3 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 400,ALLEGRO_ALIGN_CENTRE, "Shutdown");
+        al_draw_text(font, selected == 0 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 20,ALLEGRO_ALIGN_CENTRE, "Schnelles Rennen");
+        al_draw_text(font, selected == 1 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 120,ALLEGRO_ALIGN_CENTRE, "Tournier");
+        al_draw_text(font, selected == 2 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 220,ALLEGRO_ALIGN_CENTRE, "Options");
+        al_draw_text(font, selected == 3 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 320,ALLEGRO_ALIGN_CENTRE, "Update");
+        al_draw_text(font, selected == 4 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 420,ALLEGRO_ALIGN_CENTRE, "Shutdown");
         draw_screen_keyboard();
         al_flip_display();
         
         InputEvent event = input.wait_for_event();
         switch(event._dest)
         {
-            case DUP:  selected = (selected + 3) % 4;break;
-            case DDOWN:  selected = (selected + 1) % 4; break;
+            case DUP:  selected = (selected + 4) % 5;break;
+            case DDOWN:  selected = (selected + 1) % 5; break;
             case DENTER:
             {
                 switch (selected){
                     case 0: fast_race(input);break;
                     case 1: tournee(input);break;
                     case 2: options(input);break;
-                    case 3: system("systemctl poweroff");break;
+                    case 3: system("./update.sh");break;
+                    case 4: system("systemctl poweroff");break;
                 } 
                 break;
             }
