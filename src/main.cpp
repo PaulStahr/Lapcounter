@@ -1060,7 +1060,7 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
     //std::cout << al_get_display_refresh_rate(al_get_current_display()) << std::endl;
     //refresh_rate = al_get_display_refresh_rate(al_get_current_display());
     uint8_t refresh_rate = 30;
-    firework_t firework(800<<16, 480<<16, 480 / refresh_rate);
+    firework_t firework(800<<16, 480<<16, 1600 / refresh_rate);
     std::vector<bool> finished_last_frame(race.member_count(), false);
     // al_draw_text(font, al_map_rgb( 255, 0, 0), 200, 100, ALLEGRO_ALIGN_LEFT,"CONGRATULATIONS" );
     firework_drawer_t draw_firework;
@@ -1122,7 +1122,7 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
             
             //draw_time(font, FOREGROUND_COLOR, column_pos, table_top + row_height * 3, ALLEGRO_ALIGN_CENTER, time_format, round < 1 || finished ? std::numeric_limits<nanotime_t>::max() : (current_time - race_member.get_absolut_last_time()));
             
-            draw_time(font, race_member.get_best_time_index() + 1== race_member.round_times.size() ? SELECTION_COLOR : FOREGROUND_COLOR, column_pos, table_top + row_height * 2, ALLEGRO_ALIGN_CENTER, time_format, race_member.get_relative_last_time());
+            draw_time(font, finished || race_member.get_best_time_index() + 1== race_member.round_times.size() ? SELECTION_COLOR : FOREGROUND_COLOR, column_pos, table_top + row_height * 2, ALLEGRO_ALIGN_CENTER, time_format, finished ? race_member.get_best_time() : race_member.get_relative_last_time());
             draw_time(font, FOREGROUND_COLOR, column_pos, table_top + row_height * 3, ALLEGRO_ALIGN_CENTER, time_format, race_member.get_absolut_last_time() == std::numeric_limits<nanotime_t>::max() ? std::numeric_limits<nanotime_t>::max() : (race_member.get_absolut_last_time() - race.race_start_time));
             
             draw_ptime(font_small, FOREGROUND_COLOR, column_pos+10, table_top + row_height * 4, ALLEGRO_ALIGN_CENTER, time_format, race.timediff_to_first(race_member));
