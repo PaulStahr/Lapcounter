@@ -34,6 +34,8 @@ SOFTWARE.
 #include <condition_variable>
 #include <vector>
 #include <fstream>
+#include <chrono>
+//#include <thread>
 #include "server.h"
 #include "loghtml.h"
 #include "tournee_plan.h"
@@ -57,6 +59,7 @@ ALLEGRO_FONT *font;
 ALLEGRO_FONT *font_big;
 ALLEGRO_FONT *font_control;
 ALLEGRO_BITMAP* car_bitmaps[4];
+ALLEGRO_BITMAP* splash_bitmap;
 ALLEGRO_SAMPLE *sample;
 ALLEGRO_SAMPLE *sample2;
 ALLEGRO_SAMPLE *sample3;
@@ -514,6 +517,8 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
         assert(car_bitmaps);
     }
     
+    splash_bitmap = al_load_bitmap("images/splash.png");
+    
     sample  = al_load_sample( "sounds/beep.wav" );
     sample2 = al_load_sample( "sounds/beep2.wav" );
     sample3 = al_load_sample( "sounds/beep3.wav" );
@@ -639,6 +644,16 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
 
 
 int menu(InputHandler & input){
+    //TODOsplash_bitmaps
+    if (splash_bitmap)
+    {
+        float w = al_get_bitmap_width(splash_bitmap), h =al_get_bitmap_height(splash_bitmap); 
+        //float sh = column_width * h * 0.9 / w;
+        al_draw_scaled_bitmap(splash_bitmap, 0, 0, w,h, 0, 0, display_width, display_height, 0);
+        al_flip_display();
+    //std::this_thread::sleep_for(std::chrono::milliseconds(x));
+     boost::this_thread::sleep( boost::posix_time::milliseconds(5000) );
+    }
     int selected = 0;
     while (true){
         al_clear_to_color(BACKGROUND_COLOR);
