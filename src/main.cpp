@@ -172,7 +172,6 @@ int tournee(InputHandler &);
 int anzeige (uint8_t runden, uint8_t spieler, InputHandler & handler);
 int options(InputHandler & input);
 
-
 #ifdef RASPBERRY_PI
 
 InputHandler *global_input = nullptr;
@@ -231,18 +230,35 @@ void allegro_input_task(InputHandler *handler)
     al_register_event_source(event_queue, al_get_keyboard_event_source());
     al_register_event_source(event_queue, al_get_mouse_event_source());
     al_register_event_source(event_queue, al_get_joystick_event_source());
+    //float lastaxispos[10];
     while (handler->is_valid())
     {
         ALLEGRO_EVENT ev;
         al_wait_for_event(event_queue, &ev);
         Destination dest = DUNDEF;
         size_t buttonSize = 40;
+        std::cout << ev.type << std::endl;
+        if (ev.type == ALLEGRO_EVENT_JOYSTICK_AXIS)
+        {
+            switch (ev.joystick.stick * 2 + ev.joystick.axis)
+            {
+                case 6: if (ev.joystick.pos < -0.5){dest = DLEFT;}
+                        if (ev.joystick.pos > 0.5){dest = DRIGHT;}
+                    break;
+                case 7: if (ev.joystick.pos < -0.5){dest = DUP;}
+                        if (ev.joystick.pos > 0.5){dest = DDOWN;}
+                    break;
+            }
+            //std::cout << ev.joystick.stick * 2 + ev.joystick.axis << ' ' << ev.joystick.pos;
+            //lastaxispos[ev.joystick.stick * 2 + ev.joystick.axis] = ev.joystick.pos;
+        }
         if (ev.type == ALLEGRO_EVENT_JOYSTICK_BUTTON_DOWN)
         {
+            std::cout << ev.joystick.button << std::endl;
             switch (ev.joystick.button)
             {
-                case 0:  dest = DDOWN;break;
-                case 1:    dest = DUP;break;
+                case 0:  dest = DENTER;break;
+                case 1:    dest = DBACK;break;
                 case 2:  dest = DLEFT;break;
                 case 3: dest = DRIGHT;break;
                 case 4:dest = DBACK;break;
@@ -1002,11 +1018,13 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
     for (int i=0;i<spieler;i++)
         race.members.emplace_back(race_data_item(pl[i]));
     uint16_t top_border = 0;
-    uint16_t bottom_border = 10;
-    uint16_t row_height = (display_height-top_border-bottom_border)/7;
+    uint16_t bottom_border = 0;
+    uint16_t table_top = 120;
+    uint16_t row_height = (display_height-table_top-bottom_border)/5;//Todo
     uint16_t left_border = 5;
     uint16_t right_border = 5;
     uint16_t column_width = (display_width-left_border-right_border)/(spieler);
+    table_top += 30;
     
     size_t visible_lights = 0;
     size_t time_format = 1;
@@ -1014,7 +1032,6 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
     uint8_t control = 0;
     
     std::function<void(InputEvent const & event)> callback = [&race, &control](InputEvent const & event){
-        
         if (event._dest >= DSENSOR0 && event._dest < DSENSOR0 + race.member_count())
         {
             bool race_started = event._when > race.race_start_time;
@@ -1040,9 +1057,12 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
     input.register_callback(callback);
     
     std::bernoulli_distribution create_new_rocket(0.2);
-    firework_t firework(800<<16, 480<<16, 40);
+    //std::cout << al_get_display_refresh_rate(al_get_current_display()) << std::endl;
+    //refresh_rate = al_get_display_refresh_rate(al_get_current_display());
+    uint8_t refresh_rate = 30;
+    firework_t firework(800<<16, 480<<16, 480 / refresh_rate);
     std::vector<bool> finished_last_frame(race.member_count(), false);
-    al_draw_text(font, al_map_rgb( 255, 0, 0), 200, 100, ALLEGRO_ALIGN_LEFT,"CONGRATULATIONS" );
+    // al_draw_text(font, al_map_rgb( 255, 0, 0), 200, 100, ALLEGRO_ALIGN_LEFT,"CONGRATULATIONS" );
     firework_drawer_t draw_firework;
     while (true){
         al_flip_display();
@@ -1072,8 +1092,8 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
         }
        
         int ylightpos = 50 - std::max(0,static_cast<int>((current_time - race.race_start_time - 2000000) / 20000));
-        for (size_t i=0;i<race.member_count();i++){
-
+        for (size_t i=0;i<race.member_count();i++)
+        {
             race_data_item &race_member = race.members[i];
             int round = race.get_round(race_member);
             size_t column_pos = left_border+column_width*(i) + column_width / 2;
@@ -1081,40 +1101,40 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
             if (finished && !finished_last_frame[i])
             {
                 finished_last_frame[i] = true;
-                firework._explosions.emplace_back(300, std::array<int32_t, 2>({0x10000*static_cast<int32_t>(column_pos + column_width / 2),  0x10000*(480 - (top_border + row_height * 1 + 30))}), std::array<int32_t, 2>({0,0}), 10000, firework._timestep, firework._gen);
+                firework._explosions.emplace_back(300, std::array<int32_t, 2>({0x10000*static_cast<int32_t>(column_pos + column_width / 2),  0x10000*(480 - (table_top + 30))}), std::array<int32_t, 2>({0,0}), 10000, firework._timestep, firework._gen);
             }
             {
             //al_draw_bitmap(car_bitmaps[i], column_pos,40,0);
-                int current_place = race.get_current_place(race_member);
+                int current_place = race_member.round_times.size() == 0 ? race.member_count() : race.get_current_place(race_member);
                 float w = al_get_bitmap_width(car_bitmaps[i]), h =al_get_bitmap_height(car_bitmaps[i]); 
                 float sh = column_width * h * 0.9 / w;
                 al_draw_scaled_bitmap(car_bitmaps[i], 0, 0, w,h, column_pos - column_width * 0.45, current_place * 40 - sh/2+5, column_width * 0.9, sh, 0);
             }
-            al_draw_text(font, FOREGROUND_COLOR, column_pos, top_border + row_height * 1,  ALLEGRO_ALIGN_LEFT, race_member.belongs_to_player->first_name.c_str());
-            al_draw_textf(font, FOREGROUND_COLOR, column_pos, top_border + row_height * 3, ALLEGRO_ALIGN_RIGHT, "%d",round);
-            al_draw_textf(font_small, FOREGROUND_COLOR, column_pos, top_border + row_height * 3+20, ALLEGRO_ALIGN_LEFT, "/%d",runden);
+            al_draw_text(font, FOREGROUND_COLOR, column_pos, table_top + row_height * 0,  ALLEGRO_ALIGN_LEFT, race_member.belongs_to_player->first_name.c_str());
+            al_draw_textf(font, FOREGROUND_COLOR, column_pos, table_top + row_height * 1, ALLEGRO_ALIGN_RIGHT, "%d",round);
+            al_draw_textf(font_small, FOREGROUND_COLOR, column_pos, table_top + row_height * 1+20, ALLEGRO_ALIGN_LEFT, "/%d",runden);
 
             /*if (!race_started){
-                draw_time(font, FOREGROUND_COLOR, column_pos, top_border + row_height * 3, time_format, std::numeric_limits<nanotime_t>::max());
+                draw_time(font, FOREGROUND_COLOR, column_pos, table_top + row_height * 2, time_format, std::numeric_limits<nanotime_t>::max());
             }else{
-                draw_time(font, FOREGROUND_COLOR, column_pos, top_border + row_height * 3, time_format, (finished ? race_member.get_absolut_last_time() : current_time) - race.race_start_time);
+                draw_time(font, FOREGROUND_COLOR, column_pos, table_top + row_height * 2, time_format, (finished ? race_member.get_absolut_last_time() : current_time) - race.race_start_time);
             }*/
             
-            //draw_time(font, FOREGROUND_COLOR, column_pos, top_border + row_height * 4, ALLEGRO_ALIGN_CENTER, time_format, round < 1 || finished ? std::numeric_limits<nanotime_t>::max() : (current_time - race_member.get_absolut_last_time()));
+            //draw_time(font, FOREGROUND_COLOR, column_pos, table_top + row_height * 3, ALLEGRO_ALIGN_CENTER, time_format, round < 1 || finished ? std::numeric_limits<nanotime_t>::max() : (current_time - race_member.get_absolut_last_time()));
             
-            draw_time(font, race_member.get_best_time_index() + 1== race_member.round_times.size() ? SELECTION_COLOR : FOREGROUND_COLOR, column_pos, top_border + row_height * 4, ALLEGRO_ALIGN_CENTER, time_format, race_member.get_relative_last_time());
-            draw_time(font, FOREGROUND_COLOR, column_pos, top_border + row_height * 5, ALLEGRO_ALIGN_CENTER, time_format, race_member.get_absolut_last_time() == std::numeric_limits<nanotime_t>::max() ? std::numeric_limits<nanotime_t>::max() : (race_member.get_absolut_last_time() - race.race_start_time));
+            draw_time(font, race_member.get_best_time_index() + 1== race_member.round_times.size() ? SELECTION_COLOR : FOREGROUND_COLOR, column_pos, table_top + row_height * 2, ALLEGRO_ALIGN_CENTER, time_format, race_member.get_relative_last_time());
+            draw_time(font, FOREGROUND_COLOR, column_pos, table_top + row_height * 3, ALLEGRO_ALIGN_CENTER, time_format, race_member.get_absolut_last_time() == std::numeric_limits<nanotime_t>::max() ? std::numeric_limits<nanotime_t>::max() : (race_member.get_absolut_last_time() - race.race_start_time));
             
-            draw_ptime(font_small, FOREGROUND_COLOR, column_pos+10, top_border + row_height * 6, ALLEGRO_ALIGN_CENTER, time_format, race.timediff_to_first(race_member));
-            //draw_time(FOREGROUND_COLOR, column_pos, top_border + row_height * 6, time_format, race_member.get_best_time());
+            draw_ptime(font_small, FOREGROUND_COLOR, column_pos+10, table_top + row_height * 4, ALLEGRO_ALIGN_CENTER, time_format, race.timediff_to_first(race_member));
+            //draw_time(FOREGROUND_COLOR, column_pos, table_top + row_height * 5, time_format, race_member.get_best_time());
             
             /**/
             if (finished)
             {
                 int place = race.get_place(race_member);
                 if (place != -1){
-                    al_draw_filled_circle(column_pos, top_border + row_height * 1+30, 30, al_map_rgb(200,200,200));
-                    al_draw_textf(font_big, COLOR_RED, column_pos, top_border + row_height * 1, ALLEGRO_ALIGN_CENTRE, "%d",place);
+                    al_draw_filled_circle(column_pos, table_top + row_height * 0+30, 30, al_map_rgb(200,200,200));
+                    al_draw_textf(font_big, COLOR_RED, column_pos, table_top + row_height * 0, ALLEGRO_ALIGN_CENTRE, "%d",place);
                 }
             }
         }
