@@ -171,6 +171,7 @@ public:
 };
 
 ALLEGRO_DISPLAY* init(InputHandler &);
+int splash_screen(InputHandler & );
 int menu(InputHandler &);
 int fast_race(InputHandler &);
 int tournee(InputHandler &);
@@ -396,7 +397,7 @@ int main(int argc, const char* argv[]){
         }
     }
 #endif
-    menu(input);
+    splash_screen(input);
     input.destroy();
     al_destroy_display(display);
     server.stop();
@@ -646,18 +647,35 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
    return display;
 }
 
+int splash_screen(InputHandler & input){
+    while (true)
+    {
+        if (splash_bitmap)
+        {
+            float w = al_get_bitmap_width(splash_bitmap), h =al_get_bitmap_height(splash_bitmap); 
+            //float sh = column_width * h * 0.9 / w;
+            al_draw_scaled_bitmap(splash_bitmap, 0, 0, w,h, 0, 0, display_width, display_height, 0);
+            al_flip_display();
+            InputEvent event = input.wait_for_event();
+            switch(event._dest)
+            {
+                case DUP:  
+                case DDOWN:
+                case DLEFT:
+                case DRIGHT:
+                case DENTER:menu(input);break;
+                case DBACK: return 0;
+                default: break;
+            }
+        }
+        else
+        {
+            menu(input);
+        }
+    }
+}
 
 int menu(InputHandler & input){
-    //TODOsplash_bitmaps
-    if (splash_bitmap)
-    {
-        float w = al_get_bitmap_width(splash_bitmap), h =al_get_bitmap_height(splash_bitmap); 
-        //float sh = column_width * h * 0.9 / w;
-        al_draw_scaled_bitmap(splash_bitmap, 0, 0, w,h, 0, 0, display_width, display_height, 0);
-        al_flip_display();
-    //std::this_thread::sleep_for(std::chrono::milliseconds(x));
-     boost::this_thread::sleep( boost::posix_time::milliseconds(5000) );
-    }
     int selected = 0;
     while (true){
         al_clear_to_color(BACKGROUND_COLOR);
@@ -1038,7 +1056,7 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
     std::vector<player> pl(spieler);
     for (int i=0;i<spieler;i++)
         race.members.emplace_back(race_data_item(pl[i]));
-    uint16_t top_border = 0;
+    //uint16_t top_border = 0;
     uint16_t bottom_border = 0;
     uint16_t table_top = 120;
     uint16_t row_height = (display_height-table_top-bottom_border)/5;//Todo
