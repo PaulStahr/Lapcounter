@@ -64,6 +64,8 @@ ALLEGRO_SAMPLE *sample;
 ALLEGRO_SAMPLE *sample2;
 ALLEGRO_SAMPLE *sample3;
 ALLEGRO_SAMPLE *sample4;
+ALLEGRO_SAMPLE *sample_start0;
+ALLEGRO_SAMPLE *sample_start1;
 
 ALLEGRO_COLOR BACKGROUND_COLOR;
 ALLEGRO_COLOR FOREGROUND_COLOR;
@@ -475,7 +477,7 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
         fprintf(stderr, "failed to initialize audio codecs!\n");
         return nullptr;
     }
-    if (!al_reserve_samples(5)){
+    if (!al_reserve_samples(20)){
         fprintf(stderr, "failed to reserve samples!\n");
         return nullptr;
     }
@@ -523,6 +525,8 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
     sample2 = al_load_sample( "sounds/beep2.wav" );
     sample3 = al_load_sample( "sounds/beep3.wav" );
     sample4 = al_load_sample( "sounds/beep4.wav" );
+    sample_start0 = al_load_sample( "sounds/start.wav" );
+    sample_start1 = al_load_sample( "sounds/start2.wav" );
 
     
     if (!font){
@@ -1105,6 +1109,14 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
             if (create_new_rocket(firework._gen))
             {
                 firework.create_rocket();
+                if (current_time % 2)
+                {
+                    al_play_sample(sample_start0, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
+                }
+                else
+                {
+                    al_play_sample(sample_start1, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
+                }
             }    
         }
        
