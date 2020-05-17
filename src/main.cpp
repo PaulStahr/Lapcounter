@@ -90,8 +90,8 @@ nanotime_t frequency;
 int display_height;
 int display_width;
 int show_tournee_plan(tournee_plan &tp, tournee_plan_creator* tpc);
-//size_t input_pins[4]={0,2,3,4};
-size_t input_pins[4]={4,3,2,0};
+//size_t input_pins[4]={4,3,2,0};
+size_t input_pins[4]={0,2,3,4};
 
 
 enum Destination {DLEFT, DRIGHT, DUP, DDOWN, DENTER, DBACK, DSENSOR0, DSENSOR1, DSENSOR2, DSENSOR3, DNSENSOR0, DNSENSOR1, DNSENSOR2, DNSENSOR3, DUNDEF};
@@ -271,12 +271,12 @@ void allegro_input_task(InputHandler *handler)
             std::cout << ev.joystick.button << std::endl;
             switch (ev.joystick.button)
             {
-                case 0:  dest = DENTER;break;
-                case 1:    dest = DBACK;break;
-                case 2:  dest = DLEFT;break;
-                case 3: dest = DRIGHT;break;
-                case 4:dest = DBACK;break;
-                case 5: dest = DENTER;break;
+                case 0:     dest = DENTER;break;
+                case 1:     dest = DBACK;break;
+                case 2:     dest = DLEFT;break;
+                case 3:     dest = DRIGHT;break;
+                case 4:     dest = DBACK;break;
+                case 5:     dest = DENTER;break;
                 case 6:     dest = DSENSOR0;break;
                 case 7:     dest = DSENSOR1;break;
                 case 8:     dest = DSENSOR2;break;
@@ -344,6 +344,39 @@ void draw_screen_keyboard()
         al_draw_text(font, FOREGROUND_COLOR, x + 15, y-20,  ALLEGRO_ALIGN_CENTER, bt._str);   
     }
 }
+
+struct options_t
+{
+    uint32_t _led_stripe_white;
+};
+
+uint32_t mix_col(uint32_t a, uint32_t b, uint8_t fade)
+{
+    return(((fade * ((b >> 0)  & 0xFF) + (255 - fade) * (0xFF & (a >> 0 ))) / 255) << 0)
+        | (((fade * ((b >> 8)  & 0xFF) + (255 - fade) * (0xFF & (a >> 8 ))) / 255) << 8)
+        | (((fade * ((b >> 16) & 0xFF) + (255 - fade) * (0xFF & (a >> 16))) / 255) << 16);
+}
+
+std::istream & operator >> (std::istream & input, options_t & opt)
+{
+    std::string line;
+    while (getline (input,line))
+    {
+        auto seperator = std::find(line.begin(), line.end(), ':');
+        if (seperator != line.end())
+        {
+            std::string name(line.begin(), seperator);
+            std::string value(seperator + 1, line.end());
+            if (name == "led_stripe_white")
+            {
+                opt._led_stripe_white = std::strtol(value.c_str(), nullptr, 16);
+            }
+        }
+    }
+    return input;
+}
+
+options_t opt;
 
 int main(int argc, const char* argv[]){
     std::string print_plan ("--print_plan");
@@ -515,11 +548,13 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
     COLOR_GRAY          = al_map_rgb(128,128,128);
     COLOR_GREEN         = al_map_rgb(0,255,0);
     COLOR_YELLOW        = al_map_rgb(255,255,0);
-    
+    std::ifstream optionfile("options.txt");
+    optionfile >> opt;
+    optionfile.close();
 
-  //If user runs it from somewhere else...
-  ALLEGRO_PATH* path = al_get_standard_path(ALLEGRO_RESOURCES_PATH);
-  al_change_directory(al_path_cstr(path,ALLEGRO_NATIVE_PATH_SEP));
+    //If user runs it from somewhere else...
+    ALLEGRO_PATH* path = al_get_standard_path(ALLEGRO_RESOURCES_PATH);
+    al_change_directory(al_path_cstr(path,ALLEGRO_NATIVE_PATH_SEP));
     
     for (size_t i = 0; i < 4; ++i)
     {
@@ -539,77 +574,76 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
 
     
     if (!font){
-      std::cerr<<"Could not load font."<<std::endl;
-      return nullptr;
-   }
-   server.setCommandExecutor([&handler](std::string str, std::ostream & stream)
+        std::cerr<<"Could not load font."<<std::endl;
+        return nullptr;
+    }
+    server.setCommandExecutor([&handler](std::string str, std::ostream & stream)
+    {
+        //std::cout << str << std::endl;
+        stream << "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-type: text/html\r\n\r\n";
+        HTML::LogHtml log(stream);
+        stream << "<head><meta http-equiv=\"refresh\" content=\"1\" /></head>" << std::endl;
+        stream << "<head><meta http-equiv=\"refresh\" content=\"1;url=/home\"></head>" << std::endl;
+        stream << "<font size=\"7\">"<<std::endl;
+        if (global_race != nullptr)
         {
-            //std::cout << str << std::endl;
-            stream << "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-type: text/html\r\n\r\n";
-            HTML::LogHtml log(stream);
-            stream << "<head><meta http-equiv=\"refresh\" content=\"1\" /></head>" << std::endl;
-            stream << "<head><meta http-equiv=\"refresh\" content=\"1;url=/home\"></head>" << std::endl;
-            stream << "<font size=\"7\">"<<std::endl;
-            if (global_race != nullptr)
-            {
-                log << HTML::begintable(1, '\t','\n',false);
-                print_table(*global_race, log);
-                log << HTML::endtable();
-            }
             log << HTML::begintable(1, '\t','\n',false);
-            
-            log << HTML::beginlink("./bescape") << "escape";
-            log << HTML::endlink() << '\t';
-            log << HTML::beginlink("./bup") << "up";
-            log << HTML::endlink() << '\t';
-            log << HTML::beginlink("./benter") << "enter";
-            log << HTML::endlink() << '\n';
-            log << HTML::beginlink("./bleft") << "left";
-            log << HTML::endlink() << '\t';
-            log << HTML::beginlink("./bdown") << "down";
-            log << HTML::endlink() << '\t';
-            log << HTML::beginlink("./bright") << "right";
-            log << HTML::endlink() << '\n';
+            print_table(*global_race, log);
             log << HTML::endtable();
-            
-            
-            log << HTML::begintable(1, '\t','\n',false);
-            log << HTML::beginlink("./bsensor1") << "+";
-            log << HTML::endlink() << '\t';
-            log << HTML::beginlink("./bsensor2") << "+";
-            log << HTML::endlink() << '\t';
-            log << HTML::beginlink("./bsensor3") << "+";
-            log << HTML::endlink() << '\t';
-            log << HTML::beginlink("./bsensor4") << "+";
-            log << HTML::endlink() << std::endl;
-            log << HTML::beginlink("./bnsensor1") << "-";
-            log << HTML::endlink() << '\t';
-            log << HTML::beginlink("./bnsensor2") << "-";
-            log << HTML::endlink() << '\t';
-            log << HTML::beginlink("./bnsensor3") << "-";
-            log << HTML::endlink() << '\t';
-            log << HTML::beginlink("./bnsensor4") << "-";
-            log << HTML::endtable();
-            std::flush(log);
-            stream << "</font>" << std::endl;
-            
-            if (str.find("bleft") != std::string::npos)     {handler.call(InputEvent(DLEFT));}
-            if (str.find("bright") != std::string::npos)    {handler.call(InputEvent(DRIGHT));}
-            if (str.find("bup") != std::string::npos)       {handler.call(InputEvent(DUP));}
-            if (str.find("bdown") != std::string::npos)     {handler.call(InputEvent(DDOWN));}
-            if (str.find("benter") != std::string::npos)    {handler.call(InputEvent(DENTER));}
-            if (str.find("bescape") != std::string::npos)   {handler.call(InputEvent(DBACK));}
-            if (str.find("bsensor1") != std::string::npos)  {handler.call(InputEvent(DSENSOR0));}
-            if (str.find("bsensor2") != std::string::npos)  {handler.call(InputEvent(DSENSOR1));}
-            if (str.find("bsensor3") != std::string::npos)  {handler.call(InputEvent(DSENSOR2));}
-            if (str.find("bsensor4") != std::string::npos)  {handler.call(InputEvent(DSENSOR3));}
-            if (str.find("bnsensor1") != std::string::npos) {handler.call(InputEvent(DNSENSOR0));}
-            if (str.find("bnsensor2") != std::string::npos) {handler.call(InputEvent(DNSENSOR1));}
-            if (str.find("bnsensor3") != std::string::npos) {handler.call(InputEvent(DNSENSOR2));}
-            if (str.find("bnsensor4") != std::string::npos) {handler.call(InputEvent(DNSENSOR3));}
         }
-);
-   server.start();
+        log << HTML::begintable(1, '\t','\n',false);
+        
+        log << HTML::beginlink("./bescape") << "escape";
+        log << HTML::endlink() << '\t';
+        log << HTML::beginlink("./bup") << "up";
+        log << HTML::endlink() << '\t';
+        log << HTML::beginlink("./benter") << "enter";
+        log << HTML::endlink() << '\n';
+        log << HTML::beginlink("./bleft") << "left";
+        log << HTML::endlink() << '\t';
+        log << HTML::beginlink("./bdown") << "down";
+        log << HTML::endlink() << '\t';
+        log << HTML::beginlink("./bright") << "right";
+        log << HTML::endlink() << '\n';
+        log << HTML::endtable();
+        
+        
+        log << HTML::begintable(1, '\t','\n',false);
+        log << HTML::beginlink("./bsensor1") << "+";
+        log << HTML::endlink() << '\t';
+        log << HTML::beginlink("./bsensor2") << "+";
+        log << HTML::endlink() << '\t';
+        log << HTML::beginlink("./bsensor3") << "+";
+        log << HTML::endlink() << '\t';
+        log << HTML::beginlink("./bsensor4") << "+";
+        log << HTML::endlink() << std::endl;
+        log << HTML::beginlink("./bnsensor1") << "-";
+        log << HTML::endlink() << '\t';
+        log << HTML::beginlink("./bnsensor2") << "-";
+        log << HTML::endlink() << '\t';
+        log << HTML::beginlink("./bnsensor3") << "-";
+        log << HTML::endlink() << '\t';
+        log << HTML::beginlink("./bnsensor4") << "-";
+        log << HTML::endtable();
+        std::flush(log);
+        stream << "</font>" << std::endl;
+        
+        if (str.find("bleft") != std::string::npos)     {handler.call(InputEvent(DLEFT));}
+        if (str.find("bright") != std::string::npos)    {handler.call(InputEvent(DRIGHT));}
+        if (str.find("bup") != std::string::npos)       {handler.call(InputEvent(DUP));}
+        if (str.find("bdown") != std::string::npos)     {handler.call(InputEvent(DDOWN));}
+        if (str.find("benter") != std::string::npos)    {handler.call(InputEvent(DENTER));}
+        if (str.find("bescape") != std::string::npos)   {handler.call(InputEvent(DBACK));}
+        if (str.find("bsensor1") != std::string::npos)  {handler.call(InputEvent(DSENSOR0));}
+        if (str.find("bsensor2") != std::string::npos)  {handler.call(InputEvent(DSENSOR1));}
+        if (str.find("bsensor3") != std::string::npos)  {handler.call(InputEvent(DSENSOR2));}
+        if (str.find("bsensor4") != std::string::npos)  {handler.call(InputEvent(DSENSOR3));}
+        if (str.find("bnsensor1") != std::string::npos) {handler.call(InputEvent(DNSENSOR0));}
+        if (str.find("bnsensor2") != std::string::npos) {handler.call(InputEvent(DNSENSOR1));}
+        if (str.find("bnsensor3") != std::string::npos) {handler.call(InputEvent(DNSENSOR2));}
+        if (str.find("bnsensor4") != std::string::npos) {handler.call(InputEvent(DNSENSOR3));}
+    });
+    server.start();
    
 #ifdef LEDSTRIPE
     ws2811 = new ws2811_t();
@@ -625,7 +659,7 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
     ws2811->channel[1].invert = 0;
     ws2811->channel[1].brightness = 0;
     ws2811_init(ws2811);
-    std::fill(ws2811->channel[0].leds, ws2811->channel[0].leds + ws2811->channel[0].count, 0xFFFFFF);
+    std::fill(ws2811->channel[0].leds, ws2811->channel[0].leds + ws2811->channel[0].count, opt._led_stripe_white);
     ws2811_render(ws2811);
 #endif
    return display;
@@ -1087,6 +1121,8 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
     std::vector<bool> finished_last_frame(race.member_count(), false);
     // al_draw_text(font, al_map_rgb( 255, 0, 0), 200, 100, ALLEGRO_ALIGN_LEFT,"CONGRATULATIONS" );
     firework_drawer_t draw_firework;
+    std::fill(ws2811->channel[0].leds, ws2811->channel[0].leds + ws2811->channel[0].count, 0x0000FF);
+    ws2811_render(ws2811);
     while (true){
         al_flip_display();
         al_clear_to_color(BACKGROUND_COLOR);
@@ -1138,8 +1174,8 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
             //al_draw_bitmap(car_bitmaps[i], column_pos,40,0);
                 int current_place = race_member.round_times.size() == 0 ? race.member_count() : race.get_current_place(race_member);
                 float w = al_get_bitmap_width(car_bitmaps[i]), h =al_get_bitmap_height(car_bitmaps[i]); 
-                float sh = column_width * h * 0.9 / w;
-                al_draw_scaled_bitmap(car_bitmaps[i], 0, 0, w,h, column_pos - column_width * 0.45, current_place * 40 - sh/2+5, column_width * 0.9, sh, 0);
+                float sh = 0.25 * display_width * h * 0.9 / w;
+                al_draw_scaled_bitmap(car_bitmaps[i], 0, 0, w,h, column_pos - display_width * 0.25 * 0.45, current_place * 40 - sh/2+5, display_width * 0.25 * 0.9, sh, 0);
             }
             al_draw_text(font, FOREGROUND_COLOR, column_pos, table_top + row_height * 0,  ALLEGRO_ALIGN_LEFT, race_member.belongs_to_player->first_name.c_str());
             al_draw_textf(font, FOREGROUND_COLOR, column_pos, table_top + row_height * 1, ALLEGRO_ALIGN_RIGHT, "%d",round);
@@ -1169,36 +1205,29 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
                 }
             }
         }
+#ifdef LEDSTRIPE
+        int32_t color_fade = static_cast<int32_t>((current_time - race.race_start_time - 2000000) / 20000); 
+        if (color_fade >= 0 && color_fade < 256)
+        {
+            std::fill(ws2811->channel[0].leds, ws2811->channel[0].leds + ws2811->channel[0].count, mix_col(0x00FF00,  opt._led_stripe_white, color_fade));
+            ws2811_render(ws2811);
+        }
+#endif
         if (ylightpos >= -50)
         {
             al_draw_filled_rectangle (display_width/2-250,0,display_width/2+250,ylightpos + 50, FOREGROUND_COLOR);
             size_t tmp = 7 + divf(current_time - race.race_start_time,frequency);
             
-#ifdef LEDSTRIPE
-            int32_t color_fade = std::max(0,static_cast<int32_t>((current_time - race.race_start_time - 2000000) / 20000))      
-            if (color_fade >= 0 && color_fade < 255)
-            {
-                std::fill(ws2811->channel[0].leds, ws2811->channel[0].leds + ws2811->channel[0].count, 0x00FF00 | (0x10001 * color_fade));
-                ws2811_render(ws2811);
-            }
-#endif
             
             if (visible_lights != tmp)
             {
 #ifdef LEDSTRIPE
-                uint32_t col = 0;
-                bool updateCol = true;
-                switch (tmp){
-                    case 0: col = 0xFF0000;break;
-                    //case 5: col = 0xFFFF00;break;
-                    case 7: col = 0x00FF00;break;
-                    default updateCol = false;
-                }
-                if (updateCol)
+                if (tmp == 7)
                 {
-                    std::fill(ws2811->channel[0].leds, ws2811->channel[0].leds + ws2811->channel[0].count, col);
+                    std::fill(ws2811->channel[0].leds, ws2811->channel[0].leds + ws2811->channel[0].count, 0x00FF00);
                     ws2811_render(ws2811);
                 }
+                
 #endif
                 if (tmp < 6)
                 {
