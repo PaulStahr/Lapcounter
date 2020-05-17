@@ -51,7 +51,7 @@ extern "C" {
 #endif
 #ifdef LEDSTRIPE
 extern "C" {
-#include <ws2811.h>
+#include "ws2811.h"
 }
 #endif
 // #port1 378
@@ -653,31 +653,20 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
    server.start();
    
 #ifdef LEDSTRIPE
-    ws2811 = new ws2811_t
-    {
-        .freq = WS2811_TARGET_FREQ,
-        .dmanum = DMA,
-        .channel =
-        {
-            [0] =
-            {
-                .gpionum = 18,
-                .count = 21,
-                .invert = 0,
-                .brightness = 255,
-                .strip_type = WS2811_STRIP_GBR,
-            },
-            [1] =
-            {
-                .gpionum = 0,
-                .count = 0,
-                .invert = 0,
-                .brightness = 0,
-            },
-        },
-    };
+    ws2811 = new ws2811_t();
+    ws2811->freq = WS2811_TARGET_FREQ;
+    ws2811->dmanum = 10;
+    ws2811->channel[0].gpionum = 18;
+    ws2811->channel[0].count = 21;
+    ws2811->channel[0].invert = 0;
+    ws2811->channel[0].brightness = 255;
+    ws2811->channel[0].strip_type = WS2811_STRIP_GBR;
+    ws2811->channel[1].gpionum = 0;
+    ws2811->channel[1].count = 0;
+    ws2811->channel[1].invert = 0;
+    ws2811->channel[1].brightness = 0;
     ws2811_init(ws2811);
-    std::fill(ws2811.channel[0].leds, ws2811.channel[0].leds + ws2811.channel[0].count, 0xFFFFFF);
+    std::fill(ws2811->channel[0].leds, ws2811->channel[0].leds + ws2811->channel[0].count, 0xFFFFFF);
     ws2811_render(ws2811);
 #endif
    return display;

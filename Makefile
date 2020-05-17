@@ -1,5 +1,5 @@
 CFLAGS= -Wall -Wextra -pedantic -g -O2 -fopenmp -std=c++14
-CFLAGS += -DNDEBUG
+CFLAGS += -DNDEBUG -DLEDSTRIPE
 
 SRC := src
 BUILT := built
@@ -61,7 +61,7 @@ program: $(BUILT)/main.o $(BUILT)/tournee_plan.o $(BUILT)/firework.o $(BUILT)/se
 	g++ $(BUILT)/tournee_plan.o $(BUILT)/firework.o $(BUILT)/main.o $(BUILT)/serialize.o $(BUILT)/data.o $(BUILT)/loghtml.o $(BUILT)/server.o $(BUILT)/query_performance_counter.o $(BUILT)/tournee_plan_creator.o $(BUILT)/performance_counter.o $(BUILT)/tournee_plan_brute_force_creator.o $(BUILT)/tournee_plan_approximation_creator.o -g $(CFLAGS) $(allegro-config --libs) -lallegro $(ALLEGRO_FLAGS) -lboost_thread -lboost_system -lglut -lGL -o program
 
 programpi: $(BUILT)/mainpi.o $(BUILT)/tournee_plan.o $(BUILT)/firework.o $(BUILT)/serialize.o $(BUILT)/data.o $(BUILT)/loghtml.o $(BUILT)/server.o $(BUILT)/query_performance_counter.o $(BUILT)/tournee_plan_creator.o $(BUILT)/performance_counter.o $(BUILT)/tournee_plan_brute_force_creator.o $(BUILT)/tournee_plan_approximation_creator.o
-	g++ $(BUILT)/tournee_plan.o $(BUILT)/firework.o $(BUILT)/mainpi.o $(BUILT)/serialize.o $(BUILT)/data.o $(BUILT)/loghtml.o $(BUILT)/server.o $(BUILT)/query_performance_counter.o $(BUILT)/tournee_plan_creator.o $(BUILT)/performance_counter.o $(BUILT)/tournee_plan_brute_force_creator.o $(BUILT)/tournee_plan_approximation_creator.o -g $(CFLAGS) $(allegro-config --libs) -DRASPBERRY_PI -lwiringPi -lallegro $(ALLEGRO_FLAGS) -lboost_thread -lboost_system -lglut -lGL -o programpi
+	g++ $(BUILT)/tournee_plan.o $(BUILT)/firework.o $(BUILT)/mainpi.o $(BUILT)/serialize.o $(BUILT)/data.o $(BUILT)/loghtml.o $(BUILT)/server.o $(BUILT)/query_performance_counter.o $(BUILT)/tournee_plan_creator.o $(BUILT)/performance_counter.o $(BUILT)/tournee_plan_brute_force_creator.o $(BUILT)/tournee_plan_approximation_creator.o -g $(CFLAGS) $(allegro-config --libs) -DRASPBERRY_PI -lwiringPi -lallegro $(ALLEGRO_FLAGS) -lboost_thread -lboost_system -lglut -lGL -o programpi libws2811.a
 
 #program: main.cpp dat.o loghtml.o server.o query_performance_counter.o tournee_plan_creator.o performance_counter.o tournee_plan_brute_force_creator.o tournee_plan_approximation_creator.o
 #	g++ main.cpp dat.o loghtml.o server.o query_performance_counter.o tournee_plan_creator.o performance_counter.o tournee_plan_brute_force_creator.o tournee_plan_approximation_creator.o -g $(CFLAGS) $(allegro-config --libs) -lallegro $(ALLEGRO_FLAGS) -lboost_thread -lboost_system -o program
