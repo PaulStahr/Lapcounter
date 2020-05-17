@@ -49,7 +49,11 @@ extern "C" {
 #include <wiringPi.h>
 }
 #endif
-
+#ifdef LEDSTRIPE
+extern "C" {
+#include <ws2811.h>
+}
+#endif
 // #port1 378
 // #port2 379
 // #port3 37A
@@ -218,6 +222,9 @@ struct overlay_button
     overlay_button(uint16_t x_, uint16_t y_, uint16_t w_, uint16_t h_, const char *str_, Destination dest_): _x(x_), _y(y_), _w(w_), _h(h_), _str(str_), _dest(dest_){}
 };
 
+#ifdef LEDSTRIPE
+static ws2811_t *ws2811;
+#endif
 
 static const overlay_button buttons[6] = {
     overlay_button(0,1,1,1,"\u2190",DLEFT),
@@ -499,14 +506,14 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
     font_control = al_load_ttf_font("fonts/courbd.ttf",50,0 );
     display_height = al_get_display_height(display);
     display_width = al_get_display_width(display);
-    FOREGROUND_COLOR = al_map_rgb(255,255,255);
-    BACKGROUND_COLOR = al_map_rgb(0,0,0);
-    SELECTION_COLOR = al_map_rgb(255,255,0);
-    ERROR_COLOR = al_map_rgb(255,0,0);
-    COLOR_RED = al_map_rgb(255,0,0);
-    COLOR_GRAY = al_map_rgb(128,128,128);
-    COLOR_GREEN = al_map_rgb(0,255,0);
-    COLOR_YELLOW = al_map_rgb(255,255,0);
+    FOREGROUND_COLOR    = al_map_rgb(255,255,255);
+    BACKGROUND_COLOR    = al_map_rgb(0,0,0);
+    SELECTION_COLOR     = al_map_rgb(255,255,0);
+    ERROR_COLOR         = al_map_rgb(255,0,0);
+    COLOR_RED           = al_map_rgb(255,0,0);
+    COLOR_GRAY          = al_map_rgb(128,128,128);
+    COLOR_GREEN         = al_map_rgb(0,255,0);
+    COLOR_YELLOW        = al_map_rgb(255,255,0);
     
 
   //If user runs it from somewhere else...
@@ -644,6 +651,35 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
         }
 );
    server.start();
+   
+#ifdef LEDSTRIPE
+    ws2811 = new ws2811_t
+    {
+        .freq = WS2811_TARGET_FREQ,
+        .dmanum = DMA,
+        .channel =
+        {
+            [0] =
+            {
+                .gpionum = 18,
+                .count = 21,
+                .invert = 0,
+                .brightness = 255,
+                .strip_type = WS2811_STRIP_GBR,
+            },
+            [1] =
+            {
+                .gpionum = 0,
+                .count = 0,
+                .invert = 0,
+                .brightness = 0,
+            },
+        },
+    };
+    ws2811_init(ws2811);
+    std::fill(ws2811.channel[0].leds, ws2811.channel[0].leds + ws2811.channel[0].count, 0xFFFFFF);
+    ws2811_render(ws2811);
+#endif
    return display;
 }
 
