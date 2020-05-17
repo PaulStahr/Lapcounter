@@ -105,6 +105,7 @@ private:
     
     public:
         InputEvent(Destination dest_, nanotime_t when_) : _dest(dest_), _when(when_){}
+        InputEvent(Destination dest_) : _dest(dest_), _when(QueryPerformanceCounter()){}
 };
 
     
@@ -592,62 +593,20 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
             std::flush(log);
             stream << "</font>" << std::endl;
             
-            if (str.find("bleft") != std::string::npos) {
-                InputEvent event(DLEFT, QueryPerformanceCounter());
-                handler.call(event);
-            }
-            if (str.find("bright") != std::string::npos) {
-                InputEvent event(DRIGHT, QueryPerformanceCounter());
-                handler.call(event);
-            }
-            if (str.find("bup") != std::string::npos) {
-                InputEvent event(DUP, QueryPerformanceCounter());
-                handler.call(event);
-            }
-            if (str.find("bdown") != std::string::npos) {
-                InputEvent event(DDOWN, QueryPerformanceCounter());
-                handler.call(event);
-            }
-            if (str.find("benter") != std::string::npos) {
-                InputEvent event(DENTER, QueryPerformanceCounter());
-                handler.call(event);
-            }
-            if (str.find("bescape") != std::string::npos) {
-                InputEvent event(DBACK, QueryPerformanceCounter());
-                handler.call(event);
-            }
-            if (str.find("bsensor1") != std::string::npos) {
-                InputEvent event(DSENSOR0, QueryPerformanceCounter());
-                handler.call(event);
-            }
-            if (str.find("bsensor2") != std::string::npos) {
-                InputEvent event(DSENSOR1, QueryPerformanceCounter());
-                handler.call(event);
-            }
-            if (str.find("bsensor3") != std::string::npos) {
-                InputEvent event(DSENSOR2, QueryPerformanceCounter());
-                handler.call(event);
-            }
-            if (str.find("bsensor4") != std::string::npos) {
-                InputEvent event(DSENSOR3, QueryPerformanceCounter());
-                handler.call(event);
-            }
-            if (str.find("bnsensor1") != std::string::npos) {
-                InputEvent event(DNSENSOR0, QueryPerformanceCounter());
-                handler.call(event);
-            }
-            if (str.find("bnsensor2") != std::string::npos) {
-                InputEvent event(DNSENSOR1, QueryPerformanceCounter());
-                handler.call(event);
-            }
-            if (str.find("bnsensor3") != std::string::npos) {
-                InputEvent event(DNSENSOR2, QueryPerformanceCounter());
-                handler.call(event);
-            }
-            if (str.find("bnsensor4") != std::string::npos) {
-                InputEvent event(DNSENSOR3, QueryPerformanceCounter());
-                handler.call(event);
-            }
+            if (str.find("bleft") != std::string::npos)     {handler.call(InputEvent(DLEFT));}
+            if (str.find("bright") != std::string::npos)    {handler.call(InputEvent(DRIGHT));}
+            if (str.find("bup") != std::string::npos)       {handler.call(InputEvent(DUP));}
+            if (str.find("bdown") != std::string::npos)     {handler.call(InputEvent(DDOWN));}
+            if (str.find("benter") != std::string::npos)    {handler.call(InputEvent(DENTER));}
+            if (str.find("bescape") != std::string::npos)   {handler.call(InputEvent(DBACK));}
+            if (str.find("bsensor1") != std::string::npos)  {handler.call(InputEvent(DSENSOR0));}
+            if (str.find("bsensor2") != std::string::npos)  {handler.call(InputEvent(DSENSOR1));}
+            if (str.find("bsensor3") != std::string::npos)  {handler.call(InputEvent(DSENSOR2));}
+            if (str.find("bsensor4") != std::string::npos)  {handler.call(InputEvent(DSENSOR3));}
+            if (str.find("bnsensor1") != std::string::npos) {handler.call(InputEvent(DNSENSOR0));}
+            if (str.find("bnsensor2") != std::string::npos) {handler.call(InputEvent(DNSENSOR1));}
+            if (str.find("bnsensor3") != std::string::npos) {handler.call(InputEvent(DNSENSOR2));}
+            if (str.find("bnsensor4") != std::string::npos) {handler.call(InputEvent(DNSENSOR3));}
         }
 );
    server.start();
@@ -1163,7 +1122,7 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
             }    
         }
        
-        int ylightpos = 50 - std::max(0,static_cast<int>((current_time - race.race_start_time - 2000000) / 20000));
+        int32_t ylightpos = 50 - std::max(0,static_cast<int32_t>((current_time - race.race_start_time - 2000000) / 20000));
         for (size_t i=0;i<race.member_count();i++)
         {
             race_data_item &race_member = race.members[i];
@@ -1214,8 +1173,33 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
         {
             al_draw_filled_rectangle (display_width/2-250,0,display_width/2+250,ylightpos + 50, FOREGROUND_COLOR);
             size_t tmp = 7 + divf(current_time - race.race_start_time,frequency);
+            
+#ifdef LEDSTRIPE
+            int32_t color_fade = std::max(0,static_cast<int32_t>((current_time - race.race_start_time - 2000000) / 20000))      
+            if (color_fade >= 0 && color_fade < 255)
+            {
+                std::fill(ws2811->channel[0].leds, ws2811->channel[0].leds + ws2811->channel[0].count, 0x00FF00 | (0x10001 * color_fade));
+                ws2811_render(ws2811);
+            }
+#endif
+            
             if (visible_lights != tmp)
             {
+#ifdef LEDSTRIPE
+                uint32_t col = 0;
+                bool updateCol = true;
+                switch (tmp){
+                    case 0: col = 0xFF0000;break;
+                    //case 5: col = 0xFFFF00;break;
+                    case 7: col = 0x00FF00;break;
+                    default updateCol = false;
+                }
+                if (updateCol)
+                {
+                    std::fill(ws2811->channel[0].leds, ws2811->channel[0].leds + ws2811->channel[0].count, col);
+                    ws2811_render(ws2811);
+                }
+#endif
                 if (tmp < 6)
                 {
                     al_play_sample(sample, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
@@ -1227,18 +1211,11 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
             }
             visible_lights = tmp;
             
-            if (race_started){
-                for (int i=0;i<5;i++){
-                    al_draw_filled_circle(100*i+display_width/2-200, ylightpos, 40, COLOR_GREEN);
-                }
-            }
-            else{
-                for (size_t i=0;i<5;i++)
-                {
-                    al_draw_filled_circle(100*i+display_width/2-200, ylightpos, 40, visible_lights > i ? COLOR_RED : FOREGROUND_COLOR); 
-                }
+            for (size_t i=0;i<5;i++){
+                al_draw_filled_circle(100*i+display_width/2-200, ylightpos, 40, race_started ? COLOR_GREEN : visible_lights > i ? COLOR_RED : FOREGROUND_COLOR);//TODO images?
             }
         }
+        
         perfc.poll();
         //al_draw_textf(font, FOREGROUND_COLOR, 10, 10, ALLEGRO_ALIGN_LEFT, "FPS:%d",perfc.frames_per_second());
     }
