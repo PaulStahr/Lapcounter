@@ -45,6 +45,8 @@ SOFTWARE.
 #include "options.h"
 #include "performance_counter.h"
 #include "firework.h"
+#include "main.h"
+#include "input.h"
 #ifdef RASPBERRY_PI
 extern "C" {
 #include <wiringPi.h>
@@ -83,106 +85,11 @@ ALLEGRO_COLOR COLOR_YELLOW;
 WebServer server;
 
 
-int tournee_race(tournee_plan* tp);
-void print_time(size_t format, nanotime_t time, std::ostream & out);
-void draw_time(ALLEGRO_FONT const *font, ALLEGRO_COLOR const & color, float x, float y, int flags, size_t format, nanotime_t time);
-void draw_ptime(ALLEGRO_FONT const *font, ALLEGRO_COLOR const & color, float x, float y, int flags, size_t format, nanotime_t time);
 nanotime_t frequency;
 int display_height;
 int display_width;
-int show_tournee_plan(tournee_plan &tp, tournee_plan_creator* tpc);
-
-enum Destination {DLEFT, DRIGHT, DUP, DDOWN, DENTER, DBACK, DSENSOR0, DSENSOR1, DSENSOR2, DSENSOR3, DNSENSOR0, DNSENSOR1, DNSENSOR2, DNSENSOR3, DUNDEF};
-
-class InputEvent
-{
-public:
-    Destination _dest;
-    nanotime_t _when;
-private:
-    
-    public:
-        InputEvent(Destination dest_, nanotime_t when_) : _dest(dest_), _when(when_){}
-        InputEvent(Destination dest_) : _dest(dest_), _when(QueryPerformanceCounter()){}
-};
-
-    
-template<typename T, typename... U>
-size_t getAddress(std::function<T(U...)> f) {
-    typedef T(fnType)(U...);
-    fnType ** fnPointer = f.template target<fnType*>();
-    if (fnPointer == nullptr)
-    {
-        return 0;
-    }
-    return (size_t) *fnPointer;
-}
-
-bool operator == (std::function<void (InputEvent const &)> f, std::function<void (InputEvent const &)> g)
-{
-    return getAddress(f) == getAddress(g);
-}
-
-class InputHandler
-{
-private:
-    std::mutex mtx;
-    bool _is_valid;
-    std::condition_variable cv;
-    std::vector<std::function<void (InputEvent const &)> > callbacks;
-    InputEvent last_event;
-public:
-    InputHandler() : _is_valid(true),last_event(DUNDEF, 0){}
-    
-    void register_callback(std::function<void (InputEvent const &)> callback)
-    {
-        callbacks.push_back(callback);
-    }
-    
-    bool is_valid()
-    {
-        return _is_valid;
-    }
-    
-    void unregister_callback(std::function<void (InputEvent const &)> callback)
-    {
-        callbacks.erase(std::remove(callbacks.begin(), callbacks.end(), callback), callbacks.end());
-    }
-    
-    InputEvent wait_for_event()
-    {
-        std::unique_lock<std::mutex> lck(mtx);
-        cv.wait(lck);
-        return last_event;
-    }
-    
-    void call(InputEvent const & event)
-    {
-        std::unique_lock<std::mutex> lck(mtx);
-        last_event = event;
-        cv.notify_all();
-        for (std::function<void (InputEvent const &)> & callback : callbacks)
-        {
-            callback(event);
-        }
-    }
-    
-    void destroy()
-    {
-        _is_valid = false;
-    }
-};
-
-ALLEGRO_DISPLAY* init(InputHandler &);
-int splash_screen(InputHandler & );
-int menu(InputHandler &);
-int fast_race(InputHandler &);
-int tournee(InputHandler &);
-int anzeige (uint8_t runden, uint8_t spieler, InputHandler & handler);
-int options(InputHandler & input);
 
 #ifdef RASPBERRY_PI
-
 InputHandler *global_input = nullptr;
 template <uint8_t pin>
 void sensor_interrupt_input_task()
