@@ -42,6 +42,7 @@ SOFTWARE.
 #include "tournee_plan_approximation_creator.h"
 #include "tournee_plan_creator.h"
 #include "data.h"
+#include "options.h"
 #include "performance_counter.h"
 #include "firework.h"
 #ifdef RASPBERRY_PI
@@ -90,9 +91,6 @@ nanotime_t frequency;
 int display_height;
 int display_width;
 int show_tournee_plan(tournee_plan &tp, tournee_plan_creator* tpc);
-//size_t input_pins[4]={4,3,2,0};
-size_t input_pins[4]={0,2,3,4};
-
 
 enum Destination {DLEFT, DRIGHT, DUP, DDOWN, DENTER, DBACK, DSENSOR0, DSENSOR1, DSENSOR2, DSENSOR3, DNSENSOR0, DNSENSOR1, DNSENSOR2, DNSENSOR3, DUNDEF};
 
@@ -203,7 +201,7 @@ void sensor_poll_input_task(InputHandler *handler)
     {
         for (size_t i = 0; i < 4; ++i)
         {
-            bool current = digitalRead(input_pins[i])==1;
+            bool current = digitalRead(opt._input_pin[i])==1;
             if (current && !active[i]){
                 InputEvent event(static_cast<Destination>(DSENSOR0 + i), QueryPerformanceCounter());
                 handler->call(event);
@@ -345,35 +343,11 @@ void draw_screen_keyboard()
     }
 }
 
-struct options_t
-{
-    uint32_t _led_stripe_white;
-};
-
 uint32_t mix_col(uint32_t a, uint32_t b, uint8_t fade)
 {
     return(((fade * ((b >> 0)  & 0xFF) + (255 - fade) * (0xFF & (a >> 0 ))) / 255) << 0)
         | (((fade * ((b >> 8)  & 0xFF) + (255 - fade) * (0xFF & (a >> 8 ))) / 255) << 8)
         | (((fade * ((b >> 16) & 0xFF) + (255 - fade) * (0xFF & (a >> 16))) / 255) << 16);
-}
-
-std::istream & operator >> (std::istream & input, options_t & opt)
-{
-    std::string line;
-    while (getline (input,line))
-    {
-        auto seperator = std::find(line.begin(), line.end(), ':');
-        if (seperator != line.end())
-        {
-            std::string name(line.begin(), seperator);
-            std::string value(seperator + 1, line.end());
-            if (name == "led_stripe_white")
-            {
-                opt._led_stripe_white = std::strtol(value.c_str(), nullptr, 16);
-            }
-        }
-    }
-    return input;
 }
 
 options_t opt;
@@ -446,6 +420,11 @@ int main(int argc, const char* argv[]){
 }
 
 race_item *global_race;
+
+ALLEGRO_COLOR al_map_rgb(size_t color)
+{
+    return al_map_rgb(color >> 16, color >> 8, color);
+}
 
 void print_table(race_item const & race, std::ostream & out)
 {
@@ -540,17 +519,17 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
     font_control = al_load_ttf_font("fonts/courbd.ttf",50,0 );
     display_height = al_get_display_height(display);
     display_width = al_get_display_width(display);
-    FOREGROUND_COLOR    = al_map_rgb(255,255,255);
-    BACKGROUND_COLOR    = al_map_rgb(0,0,0);
-    SELECTION_COLOR     = al_map_rgb(255,255,0);
-    ERROR_COLOR         = al_map_rgb(255,0,0);
+    std::ifstream optionfile("options.txt");
+    optionfile >> opt;
+    optionfile.close();
+    FOREGROUND_COLOR    = al_map_rgb(opt._color_foreground);
+    BACKGROUND_COLOR    = al_map_rgb(opt._color_background);
+    SELECTION_COLOR     = al_map_rgb(opt._color_selection);
+    ERROR_COLOR         = al_map_rgb(opt._color_error);
     COLOR_RED           = al_map_rgb(255,0,0);
     COLOR_GRAY          = al_map_rgb(128,128,128);
     COLOR_GREEN         = al_map_rgb(0,255,0);
     COLOR_YELLOW        = al_map_rgb(255,255,0);
-    std::ifstream optionfile("options.txt");
-    optionfile >> opt;
-    optionfile.close();
 
     //If user runs it from somewhere else...
     ALLEGRO_PATH* path = al_get_standard_path(ALLEGRO_RESOURCES_PATH);
@@ -790,32 +769,43 @@ int options(InputHandler & input){
         al_clear_to_color(BACKGROUND_COLOR);
         for (size_t i = 0; i < 4; ++i)
         {
-            al_draw_textf(font, selected == i ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, row_height * (i + 1),ALLEGRO_ALIGN_CENTRE, "InputPin0 %u", static_cast<uint32_t>(input_pins[i]));
+            al_draw_textf(font, selected == i ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, row_height * (i + 1),ALLEGRO_ALIGN_CENTRE, "InputPin %u %u", static_cast<uint32_t>(i), static_cast<uint32_t>(opt._input_pin[i]));
         }
+        al_draw_textf(font, selected == 4 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, row_height * (5),ALLEGRO_ALIGN_CENTRE, "Save");
+        
         draw_screen_keyboard();
         al_flip_display();
         InputEvent event = input.wait_for_event();
         switch (event._dest)
         {
-            case DUP:  selected = (selected + 4) % 5; break;
-            case DDOWN: selected = (selected + 1) % 5;break;
+            case DUP:  selected = (selected + 5) % 6; break;
+            case DDOWN: selected = (selected + 1) % 6;break;
             case DRIGHT:
             {
                 if (selected < 4)
                 {
-                    ++input_pins[selected];
+                    ++opt._input_pin[selected];
                 }
                 break;
             }case DLEFT:
             {
                 if (selected < 4)
                 {
-                    --input_pins[selected];
+                    --opt._input_pin[selected];
                 }
                 break;                    
             }case DBACK:
             {
                 return 0;
+            }
+            case DENTER:
+            {
+                if (selected == 4)
+                {
+                    std::ofstream optionfile("options.txt");
+                    optionfile << opt;
+                    optionfile.close();
+                }
             }
             default: break;
         }
@@ -1121,8 +1111,10 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
     std::vector<bool> finished_last_frame(race.member_count(), false);
     // al_draw_text(font, al_map_rgb( 255, 0, 0), 200, 100, ALLEGRO_ALIGN_LEFT,"CONGRATULATIONS" );
     firework_drawer_t draw_firework;
+#ifdef LEDSTRIPE
     std::fill(ws2811->channel[0].leds, ws2811->channel[0].leds + ws2811->channel[0].count, 0x0000FF);
     ws2811_render(ws2811);
+#endif
     while (true){
         al_flip_display();
         al_clear_to_color(BACKGROUND_COLOR);
