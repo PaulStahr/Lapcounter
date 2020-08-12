@@ -32,14 +32,14 @@ class approximate_tournee_plan_creator: public tournee_plan_creator{
 	int get_best_rating();
 
 	private:
-	uint8_t** player_on_slot;
-	uint16_t* plays_on_slot;
-	uint8_t* plays_against;
-	uint16_t* plays_total_times;
-	bool* already_replaced;
+	uint8_t** round_slot_to_player;
+	uint16_t* player_slot_to_racecount;
+	uint8_t* player_player_to_racecount;
+	uint16_t* player_to_racecount;
+	bool* round_to_isreplaced;
 
-	uint8_t* replaced_round;
-	uint8_t** replaced_round_with;
+	uint8_t* round_to_replaced;
+	uint8_t** round_to_replaced_with;
 	size_t stack_deth;
     size_t slottypes;
  
@@ -48,8 +48,6 @@ class approximate_tournee_plan_creator: public tournee_plan_creator{
     std::mt19937 gen;
 
 	void insert_round(int round, uint8_t* new_round);
-
-	//uint64_t absolute_rating();
 
 	void replace(size_t round, uint8_t* new_round);
 	void push_test(int round);

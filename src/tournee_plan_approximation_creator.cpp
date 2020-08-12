@@ -36,23 +36,23 @@ void approximate_tournee_plan_creator::create_plan(){
     std::cout << player << '*' << play_against_min << std::endl;
     stack_deth = 0;
 
-    player_on_slot = new uint8_t*[rounds];
+    round_slot_to_player = new uint8_t*[rounds];
 
     slottypes = slots/equal_hard_slots;
-    plays_on_slot = new uint16_t[player * slottypes];
-    std::fill(plays_on_slot, plays_on_slot + player * slottypes, 0);
+    player_slot_to_racecount = new uint16_t[player * slottypes];
+    std::fill(player_slot_to_racecount, player_slot_to_racecount + player * slottypes, 0);
 
-    already_replaced = new bool[rounds];
-    std::fill(already_replaced, already_replaced+rounds, false);
+    round_to_isreplaced = new bool[rounds];
+    std::fill(round_to_isreplaced, round_to_isreplaced+rounds, false);
 
-    replaced_round = new uint8_t[rounds];
-    replaced_round_with = new uint8_t*[rounds];
+    round_to_replaced = new uint8_t[rounds];
+    round_to_replaced_with = new uint8_t*[rounds];
 
-    plays_against = new uint8_t[player * player];
-    std::fill(plays_against, plays_against + player * player, 0);
+    player_player_to_racecount = new uint8_t[player * player];
+    std::fill(player_player_to_racecount, player_player_to_racecount + player * player, 0);
 
-    plays_total_times = new uint16_t[player];
-    std::fill(plays_total_times, plays_total_times + player, 0);
+    player_to_racecount = new uint16_t[player];
+    std::fill(player_to_racecount, player_to_racecount + player, 0);
 
     for (size_t i=0;i<rounds;i++)
         insert_round(i, possible_rounds + slots * (i*possible_round_count/rounds));
@@ -62,108 +62,82 @@ void approximate_tournee_plan_creator::create_plan(){
 
     approximate_plan();
 
-    delete[] plays_on_slot;
-    delete[] plays_against;
-    delete[] player_on_slot;
-    delete[] already_replaced;
-    delete[] plays_total_times;
-    delete[] replaced_round;
-    delete[] replaced_round_with;
+    delete[] player_slot_to_racecount;
+    delete[] player_player_to_racecount;
+    delete[] round_slot_to_player;
+    delete[] round_to_isreplaced;
+    delete[] player_to_racecount;
+    delete[] round_to_replaced;
+    delete[] round_to_replaced_with;
 }
 
 int approximate_tournee_plan_creator::get_best_rating(){
     return best_rating;
 }
 
-void approximate_tournee_plan_creator::insert_round(int round, uint8_t* new_round){//Call Only if theres no round
+void approximate_tournee_plan_creator::insert_round(int round, uint8_t* new_slot_to_player){//Call Only if theres no round
     for (size_t i=0;i<slots;i++){
-        relative_rating += (++plays_on_slot[new_round[i] * slottypes + i/equal_hard_slots])>max_play_on_slot;
-        relative_rating += (++plays_total_times[new_round[i]])>max_play;
+        relative_rating += (++player_slot_to_racecount[new_slot_to_player[i] * slottypes + i/equal_hard_slots])>max_play_on_slot;
+        relative_rating += (++player_to_racecount[new_slot_to_player[i]])>max_play;
     }
 
     for (size_t i=1;i<slots;i++){
-        uint8_t a1 = new_round[i];
+        uint8_t a1 = new_slot_to_player[i];
         for (size_t j=0;j<i;j++){
-            uint8_t b1 = new_round[j];
-            relative_rating -= (++plays_against[a1 * player + b1]) <= play_against_min;
-            ++plays_against[b1 * player + a1];
-            /*if (a1>b1){
-                relative_rating -= (++plays_against[a1 * player + b1]) <= play_against_min;
-            }else{
-                relative_rating -= (++plays_against[b1 * player + a1]) <= play_against_min;
-            }*/
+            uint8_t b1 = new_slot_to_player[j];
+            relative_rating -= (++player_player_to_racecount[a1 * player + b1]) <= play_against_min;
+            ++player_player_to_racecount[b1 * player + a1];
         }
     }
     rating = relative_rating;// + absolute_rating();
-
-    player_on_slot[round] = new_round;	   
+    round_slot_to_player[round] = new_slot_to_player;	   
 }
 
-/*uint64_t approximate_tournee_plan_creator::absolute_rating(){
-    uint64_t rating = 0;
-    for (size_t i=1;i<player;i++){
-        uint8_t* plays_against_player = plays_against + i * player;
-        for (size_t j=0;j<i;j++)
-            if (plays_against_player[j]<play_against_min)
-                    rating += play_against_min - plays_against_player[j];
-    }
-    return rating;
-}*/
-
-void approximate_tournee_plan_creator::replace(size_t round, uint8_t* new_round){
-    uint8_t* old_round = player_on_slot[round];
+void approximate_tournee_plan_creator::replace(size_t round, uint8_t* new_slot_to_player){
+    uint8_t* old_slot_to_player = round_slot_to_player[round];
 
     for (size_t i=0, j = 0;i<slots;i++){
         j += i == (j + 1) * equal_hard_slots; //j = i / equal_hard_slots
-        uint8_t a0 = old_round[i];
-        uint8_t a1 = new_round[i];
-        relative_rating -= (--plays_on_slot[a0 * slottypes + j])>=max_play_on_slot;
-        relative_rating -= (--plays_total_times[a0])>=max_play;
-        relative_rating += (++plays_on_slot[a1 * slottypes + j])>max_play_on_slot;
-        relative_rating += (++plays_total_times[a1])>max_play;
+        uint8_t old_player = old_slot_to_player[i];
+        uint8_t new_player = new_slot_to_player[i];
+        relative_rating -= (--player_slot_to_racecount[old_player * slottypes + j])>=max_play_on_slot;
+        relative_rating -= (--player_to_racecount[old_player])>=max_play;
+        relative_rating += (++player_slot_to_racecount[new_player * slottypes + j])>max_play_on_slot;
+        relative_rating += (++player_to_racecount[new_player])>max_play;
     }
 
     for (size_t i=1;i<slots;i++){
-        uint8_t a0 = old_round[i];
-        uint8_t a1 = new_round[i];
+        uint8_t old_player = old_slot_to_player[i];
+        uint8_t new_player = new_slot_to_player[i];
         for (size_t j=0;j<i;j++){
-            uint8_t b0 = old_round[j];
-            uint8_t b1 = new_round[j];
-            relative_rating += (plays_against[b0 * player + a0] = --plays_against[a0 * player + b0]) < play_against_min;
-            relative_rating -= (plays_against[b1 * player + a1] = ++plays_against[a1 * player + b1]) <= play_against_min;
-            /*if (a0>b0)
-                relative_rating += (--plays_against[a0 * player + b0] < play_against_min);
-            else
-                relative_rating += (--plays_against[b0 * player + a0] < play_against_min);
-            if (a1>b1){
-                relative_rating -= (++plays_against[a1 * player + b1]) <= play_against_min;
-            }else{
-                relative_rating -= (++plays_against[b1 * player + a1]) <= play_against_min;
-            }*/
+            uint8_t b0 = old_slot_to_player[j];
+            uint8_t b1 = new_slot_to_player[j];
+            relative_rating += (player_player_to_racecount[b0 * player + old_player] = --player_player_to_racecount[old_player * player + b0]) < play_against_min;
+            relative_rating -= (player_player_to_racecount[b1 * player + new_player] = ++player_player_to_racecount[new_player * player + b1]) <= play_against_min;
         }
     }
-    rating = relative_rating;// + absolute_rating();
-    player_on_slot[round] = new_round;
+    rating = relative_rating;
+    round_slot_to_player[round] = new_slot_to_player;
 }
 
 void approximate_tournee_plan_creator::push_test(int round){
-    if (already_replaced[round])
+    if (round_to_isreplaced[round])
         return;
-    replaced_round[stack_deth]=round;
-    replaced_round_with[stack_deth]=player_on_slot[round];
+    round_to_replaced[stack_deth]=round;
+    round_to_replaced_with[stack_deth]=round_slot_to_player[round];
     stack_deth++;
-    already_replaced[round] = true;
+    round_to_isreplaced[round] = true;
 }
 
 void approximate_tournee_plan_creator::replace_last_test(uint8_t* replacement){
     if (stack_deth<1)
         std::cout<<"error 1"<<std::endl;
-    replace(replaced_round[stack_deth-1], replacement);
+    replace(round_to_replaced[stack_deth-1], replacement);
 }
 
 void approximate_tournee_plan_creator::validate(){
     while (stack_deth>0)
-        already_replaced[replaced_round[--stack_deth]] = false;
+        round_to_isreplaced[round_to_replaced[--stack_deth]] = false;
     best_rating = rating;
 }
 
@@ -178,9 +152,9 @@ void approximate_tournee_plan_creator::pop_all_tests(){
 bool approximate_tournee_plan_creator::pop_last_test(){
     if (stack_deth < 1)
         return false;
-    uint8_t round = replaced_round[--stack_deth];
-    replace(round, replaced_round_with[stack_deth]);
-    already_replaced[round] = false;
+    uint8_t round = round_to_replaced[--stack_deth];
+    replace(round, round_to_replaced_with[stack_deth]);
+    round_to_isreplaced[round] = false;
     return true;
 }
 
@@ -188,7 +162,7 @@ bool approximate_tournee_plan_creator::recursive_approximation(size_t deth){
     size_t start_replacing = gen() % rounds;
     for (size_t i = 0;i < rounds&&!should_stop();i++){
         size_t replace_round = (i + start_replacing)%rounds;
-        if (already_replaced[replace_round])
+        if (round_to_isreplaced[replace_round])
             continue;
         size_t start_possible_round = gen() % possible_round_count;
         push_test(replace_round);
@@ -220,7 +194,7 @@ void approximate_tournee_plan_creator::approximate_plan(){
     for (size_t i=0;i<3&&rating != 0 && !should_stop();){
         if (recursive_approximation(i)){
                 std::cout<<"Decreased Error-Rate:"<<rating<<std::endl;
-                copy_plan(player_on_slot);
+                copy_plan(round_slot_to_player);
                 if (i!=0)
                     std::cout<<"Decreased deth to:"<<(i=0)<<std::endl;
             }else{
@@ -228,22 +202,20 @@ void approximate_tournee_plan_creator::approximate_plan(){
         }
     }
     swap_round_optimization();
-    copy_plan(player_on_slot);
+    copy_plan(round_slot_to_player);
 }
 
 uint64_t approximate_tournee_plan_creator::swap_rating(){
-    uint8_t* last_played = new uint8_t[player];
-    std::fill(last_played, last_played+player, -1307674368001);
+    uint8_t* player_to_last_player = new uint8_t[player];
+    std::fill(player_to_last_player, player_to_last_player+player, -1307674368001);
     uint64_t rating = 0;
     for (size_t i=0;i<rounds;i++){
-        uint8_t* current_round = player_on_slot[i];
-        for (size_t j=0;j<slots;j++){
-            uint8_t player = current_round[j];
-            rating += 1307674368000/(i-last_played[player]);
-            last_played[player] = i;
+        for (uint8_t* slot_to_player = round_slot_to_player[i]; slot_to_player < round_slot_to_player[i] + slots; ++slot_to_player){
+            rating += 1307674368000/(i-player_to_last_player[*slot_to_player]);
+            player_to_last_player[*slot_to_player] = i;
         }
     }
-    delete[] last_played;
+    delete[] player_to_last_player;
     return rating;
 }
 
@@ -256,15 +228,15 @@ void approximate_tournee_plan_creator::swap_round_optimization(){
         for (size_t i=0;i<rounds;i++){
             for (size_t j=0;j<rounds;j++){
                 for (size_t k=0;k<rounds;k++){
-                    uint8_t* tmp = player_on_slot[i];
-                    player_on_slot[i] = player_on_slot[j];
-                    player_on_slot[j] = player_on_slot[k];
-                    player_on_slot[k] = tmp;
+                    uint8_t* tmp = round_slot_to_player[i];
+                    round_slot_to_player[i] = round_slot_to_player[j];
+                    round_slot_to_player[j] = round_slot_to_player[k];
+                    round_slot_to_player[k] = tmp;
                     long long unsigned int new_rating = swap_rating();
                     if (best_rating <= new_rating){
-                        player_on_slot[k] = player_on_slot[j];
-                        player_on_slot[j] = player_on_slot[i];
-                        player_on_slot[i] = tmp;
+                        round_slot_to_player[k] = round_slot_to_player[j];
+                        round_slot_to_player[j] = round_slot_to_player[i];
+                        round_slot_to_player[i] = tmp;
                     }else{
                         best_rating = new_rating;
                         changed_sth = true;
