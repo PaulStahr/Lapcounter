@@ -31,16 +31,16 @@ class brute_force_tournee_plan_creator: public tournee_plan_creator{
 
 	void create_plan();
 	private:
-	uint8_t** player_on_slot;
-	int* plays_on_slot;
-	int* plays_against;
+	uint8_t** round_slot_to_player;
+	uint8_t* player_slot_to_racecount;
+    uint8_t* player_player_to_racecount;
 	uint8_t* possible_rounds;
-	int* played_against_max_times;
-	int* plays_total_times;
+	uint8_t* played_against_max_times;
+	uint8_t* player_to_racecount;
 
 	size_t max_deth;
 	size_t min_deth;
-	int checked_plans;
+	uint64_t checked_plans;
 
 	uint8_t** calculate_plan(size_t deth, size_t round_index);
 };

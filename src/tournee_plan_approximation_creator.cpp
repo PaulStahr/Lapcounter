@@ -34,7 +34,7 @@ void approximate_tournee_plan_creator::create_plan(){
 
     rating = relative_rating = play_against_min * (player * (player - 1)) / 2;
     std::cout << player << '*' << play_against_min << std::endl;
-    stack_deth = 0;
+    stack_depth = 0;
 
     round_slot_to_player = new uint8_t*[rounds];
 
@@ -45,8 +45,8 @@ void approximate_tournee_plan_creator::create_plan(){
     round_to_isreplaced = new bool[rounds];
     std::fill(round_to_isreplaced, round_to_isreplaced+rounds, false);
 
-    round_to_replaced = new uint8_t[rounds];
-    round_to_replaced_with = new uint8_t*[rounds];
+    stack_to_round = new uint8_t[rounds];
+    stack_to_round_to_player = new uint8_t*[rounds];
 
     player_player_to_racecount = new uint8_t[player * player];
     std::fill(player_player_to_racecount, player_player_to_racecount + player * player, 0);
@@ -67,8 +67,8 @@ void approximate_tournee_plan_creator::create_plan(){
     delete[] round_slot_to_player;
     delete[] round_to_isreplaced;
     delete[] player_to_racecount;
-    delete[] round_to_replaced;
-    delete[] round_to_replaced_with;
+    delete[] stack_to_round;
+    delete[] stack_to_round_to_player;
 }
 
 int approximate_tournee_plan_creator::get_best_rating(){
@@ -123,21 +123,21 @@ void approximate_tournee_plan_creator::replace(size_t round, uint8_t* new_slot_t
 void approximate_tournee_plan_creator::push_test(int round){
     if (round_to_isreplaced[round])
         return;
-    round_to_replaced[stack_deth]=round;
-    round_to_replaced_with[stack_deth]=round_slot_to_player[round];
-    stack_deth++;
+    stack_to_round[stack_depth]=round;
+    stack_to_round_to_player[stack_depth]=round_slot_to_player[round];
+    stack_depth++;
     round_to_isreplaced[round] = true;
 }
 
 void approximate_tournee_plan_creator::replace_last_test(uint8_t* replacement){
-    if (stack_deth<1)
+    if (stack_depth<1)
         std::cout<<"error 1"<<std::endl;
-    replace(round_to_replaced[stack_deth-1], replacement);
+    replace(stack_to_round[stack_depth-1], replacement);
 }
 
 void approximate_tournee_plan_creator::validate(){
-    while (stack_deth>0)
-        round_to_isreplaced[round_to_replaced[--stack_deth]] = false;
+    while (stack_depth>0)
+        round_to_isreplaced[stack_to_round[--stack_depth]] = false;
     best_rating = rating;
 }
 
@@ -150,10 +150,10 @@ void approximate_tournee_plan_creator::pop_all_tests(){
 }
 
 bool approximate_tournee_plan_creator::pop_last_test(){
-    if (stack_deth < 1)
+    if (stack_depth < 1)
         return false;
-    uint8_t round = round_to_replaced[--stack_deth];
-    replace(round, round_to_replaced_with[stack_deth]);
+    uint8_t round = stack_to_round[--stack_depth];
+    replace(round, stack_to_round_to_player[stack_depth]);
     round_to_isreplaced[round] = false;
     return true;
 }
@@ -180,7 +180,7 @@ bool approximate_tournee_plan_creator::recursive_approximation(size_t deth){
             if (deth > 0 && best_rating+10 > rating){
                 if (recursive_approximation(deth-1))
                     return true;
-                if (stack_deth<1)
+                if (stack_depth<1)
                     push_test(replace_round);
             }
         }

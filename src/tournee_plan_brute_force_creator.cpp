@@ -36,43 +36,43 @@ void brute_force_tournee_plan_creator::create_plan(){
     min_deth = rounds;
     checked_plans=0;
 
-    player_on_slot = new uint8_t*[rounds];
+    round_slot_to_player = new uint8_t*[rounds];
         
-    plays_on_slot = new int[player * player];
-    std::fill(plays_on_slot, plays_on_slot+player * player, 0);
+    player_slot_to_racecount = new uint8_t[player * player];
+    std::fill(player_slot_to_racecount, player_slot_to_racecount+player * player, 0);
         
-    plays_against = new int[player * player];
-    std::fill(plays_against, plays_against + player * player, 0);
+    player_player_to_racecount = new uint8_t[player * player];
+    std::fill(player_player_to_racecount, player_player_to_racecount + player * player, 0);
     
-    plays_total_times = new int[player];
-    std::fill(plays_total_times, plays_total_times + player, 0);
+    player_to_racecount = new uint8_t[player];
+    std::fill(player_to_racecount, player_to_racecount + player, 0);
 
-    played_against_max_times = new int[player];
+    played_against_max_times = new uint8_t[player];
     std::fill(played_against_max_times, played_against_max_times + player, 0);
 
     for (size_t i=0;i<slots;i++){
-        plays_on_slot[i * player + slots-i-1]=1;
-        plays_total_times[i]++;
+        player_slot_to_racecount[i * player + slots-i-1]=1;
+        player_to_racecount[i]++;
         for (size_t j=0;j<i;j++){
-            plays_against[i* player + j] = 1;
+            player_player_to_racecount[i* player + j] = 1;
             if (play_against_max == 1){
-                played_against_max_times[i]++;
-                played_against_max_times[j]++;
+                ++played_against_max_times[i];
+                ++played_against_max_times[j];
             }
         }
     }
 
-    player_on_slot[0] = possible_rounds;
+    round_slot_to_player[0] = possible_rounds;
 
     srand(time(NULL));
     uint8_t** race_table = calculate_plan(1, 0);
 
     delete possible_rounds;
 
-    delete player_on_slot;
+    delete round_slot_to_player;
     
-    delete[] plays_on_slot;
-    delete[] plays_against;
+    delete[] player_slot_to_racecount;
+    delete[] player_player_to_racecount;
     copy_plan(race_table);
 }
 
@@ -90,31 +90,27 @@ uint8_t** brute_force_tournee_plan_creator::calculate_plan(size_t deth, size_t r
     uint8_t** race_table_local = NULL;
                 
     for(;round_index < possible_round_count;round_index++){
-        uint8_t* player_on_slot_round = possible_rounds + round_index * slots;
-        player_on_slot[deth] = player_on_slot_round;
+        uint8_t* round_slot_to_player_round = possible_rounds + round_index * slots;
+        round_slot_to_player[deth] = round_slot_to_player_round;
         bool incorrect = false;
 
         for (size_t i=0;i<slots;i++){
-            if ((++plays_on_slot[player_on_slot_round[i] * player + i])>max_play_on_slot)
-                incorrect = true;
-            if ((++plays_total_times[player_on_slot_round[i]])>max_play)
-                incorrect = true;
+            incorrect |= (++player_slot_to_racecount[round_slot_to_player_round[i] * player + i])>max_play_on_slot;
+            incorrect |= (++player_to_racecount[round_slot_to_player_round[i]])>max_play;
         }
         
         if (!incorrect){
             //Analyse Wer spielt gegen Wen + Korrektheitspruefung Spielen 2 zu oft gegeneinander
             for (size_t i=1;i<slots;i++){
-                int a = player_on_slot_round[i];
+                int a = round_slot_to_player_round[i];
                 for (size_t j=0;j<i;j++){
-                    int b = player_on_slot_round[j];
-                    int times = a>b ? ++plays_against[a* player + b] : ++plays_against[b * player + a];
+                    int b = round_slot_to_player_round[j];
+                    int times = a>b ? ++player_player_to_racecount[a* player + b] : ++player_player_to_racecount[b * player + a];
                     if (times > play_against_max){
                         incorrect = true;
                     }else if (times == play_against_max){
-                        if ((++played_against_max_times[a])>play_against_max_count)
-                            incorrect = true;
-                        if ((++played_against_max_times[b])>play_against_max_count)
-                            incorrect = true;
+                        incorrect |= (++played_against_max_times[a])>play_against_max_count;
+                        incorrect |= (++played_against_max_times[b])>play_against_max_count;
                     }
                 }
             }
@@ -127,7 +123,7 @@ uint8_t** brute_force_tournee_plan_creator::calculate_plan(size_t deth, size_t r
                     race_table_local = new uint8_t*[rounds];
                     for (size_t i=0;i<rounds;i++){
                         race_table_local[i] = new uint8_t[slots];
-                        std::copy(player_on_slot[i], player_on_slot[i] + slots, race_table_local[i]);
+                        std::copy(round_slot_to_player[i], round_slot_to_player[i] + slots, race_table_local[i]);
                     }
                     goto cleanup;
                 }else{
@@ -140,10 +136,10 @@ uint8_t** brute_force_tournee_plan_creator::calculate_plan(size_t deth, size_t r
             }
 
             for (size_t i=1;i<slots;i++){
-                int a = player_on_slot_round[i];
+                int a = round_slot_to_player_round[i];
                 for (size_t j=0;j<i;j++){
-                    int b = player_on_slot_round[j];
-                    int times = a > b ? plays_against[a * player + b]-- : plays_against[b * player + a]--;
+                    int b = round_slot_to_player_round[j];
+                    int times = a > b ? player_player_to_racecount[a * player + b]-- : player_player_to_racecount[b * player + a]--;
                     if (times == play_against_max){
                         played_against_max_times[a]--;
                         played_against_max_times[b]--;
@@ -153,16 +149,16 @@ uint8_t** brute_force_tournee_plan_creator::calculate_plan(size_t deth, size_t r
         }
 
         for (size_t i=0;i<slots;i++){
-            int posr = player_on_slot_round[i];
-            plays_on_slot[posr * player + i]--;
-            plays_total_times[posr]--;
+            int posr = round_slot_to_player_round[i];
+            --player_slot_to_racecount[posr * player + i];
+            --player_to_racecount[posr];
         }
     }
     return race_table_local;
     cleanup:
     for (size_t i=0;i<slots;i++){
-        plays_on_slot[player_on_slot[deth][i] * player + i]--;
-        plays_total_times[player_on_slot[deth][i]]--;
+        --player_slot_to_racecount[round_slot_to_player[deth][i] * player + i];
+        --player_to_racecount[round_slot_to_player[deth][i]];
     }
 
     return race_table_local;

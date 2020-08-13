@@ -38,9 +38,9 @@ class approximate_tournee_plan_creator: public tournee_plan_creator{
 	uint16_t* player_to_racecount;
 	bool* round_to_isreplaced;
 
-	uint8_t* round_to_replaced;
-	uint8_t** round_to_replaced_with;
-	size_t stack_deth;
+	uint8_t* stack_to_round;
+	uint8_t** stack_to_round_to_player;
+	size_t stack_depth;
     size_t slottypes;
  
 	int rating, best_rating; //lower are better
