@@ -1,5 +1,5 @@
 led_stripe_white:70FFFF
-led_debug:true
+debug_overlay:true
 color_foreground:FFFFFF
 color_background:000000
 color_selection:FFFF00

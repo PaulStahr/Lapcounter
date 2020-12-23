@@ -133,19 +133,29 @@ struct overlay_button
 static ws2811_t *ws2811;
 struct led_stripe_t
 {
-    uint32_t begin(){return ws2811->channel[0].leds;}
-    uint32_t end(){return ws2811->channel[0].leds + ws2811->channel[0].count;}
-    size_t size(){ws2811->channel[0].count;}
-    void render(){ws2811_render(ws2811);}
+    bool _dirty = false;
+    uint32_t * begin()              {return ws2811->channel[0].leds;}
+    uint32_t * end()                {return ws2811->channel[0].leds + ws2811->channel[0].count;}
+    uint32_t const * begin() const  {return ws2811->channel[0].leds;}
+    uint32_t const * end()   const  {return ws2811->channel[0].leds + ws2811->channel[0].count;}
+    size_t size() const             {ws2811->channel[0].count;}
+    void render()                   {if (_dirty){ws2811_render(ws2811);_dirty = false;}}
+    uint32_t        & operator[] (size_t index)      {return ws2811->channel[0].leds[index];}
+    uint32_t const  & operator[] (size_t index) const{return ws2811->channel[0].leds[index];}
 };
 #else
 struct led_stripe_t
 {
+    bool _dirty;
     std::vector<uint32_t> _leds = std::vector<uint32_t>(10);
-    uint32_t * begin()  {return _leds.data();}
-    uint32_t * end()    {return _leds.data() + _leds.size();}
-    size_t size()      {return _leds.size();}
-    void render(){}
+    uint32_t * begin()              {return _leds.data();}
+    uint32_t * end()                {return _leds.data() + _leds.size();}
+    uint32_t const * begin() const  {return _leds.data();}
+    uint32_t const * end()   const  {return _leds.data() + _leds.size();}
+    size_t size() const             {return _leds.size();}
+    void render(){_dirty = false;}
+    uint32_t        & operator[] (size_t index)     {return _leds[index];}
+    uint32_t const  & operator[] (size_t index)const{return _leds[index];}
 };
 #endif
 
@@ -158,6 +168,17 @@ static const overlay_button buttons[6] = {
   //  overlay_button(1,1,1,1,"\u2B24",DENTER),
   //  overlay_button(1,1,1,1,"\u25CF",DENTER),
     overlay_button(1,1,1,1,"\u2022",DENTER)
+};
+
+struct debug_overlay_t
+{
+    void draw(led_stripe_t const & led_stripe){
+        for(size_t i = 0; i < led_stripe.size(); ++i)
+        {
+            uint32_t elem = led_stripe[i];
+            al_draw_filled_circle(i*800/led_stripe.size() + 30, 400, 30, al_map_rgb(elem&0xFF,(elem >> 8) & 0xFF,(elem >> 16) & 0xFF));
+        }
+    }
 };
 
 void allegro_input_task(InputHandler *handler)
@@ -984,6 +1005,7 @@ int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led
     uint16_t right_border = 5;
     uint16_t column_width = (display_width-left_border-right_border)/(race.members.size());
     table_top += 30;
+    debug_overlay_t debug_overlay;
     
     size_t visible_lights = 0;
     size_t time_format = 1;
@@ -1029,18 +1051,15 @@ int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led
     // al_draw_text(font, al_map_rgb( 255, 0, 0), 200, 100, ALLEGRO_ALIGN_LEFT,"CONGRATULATIONS" );
     firework_drawer_t draw_firework;
     std::fill(led_stripe.begin(), led_stripe.end(), 0x0000FF);
-    led_stripe.end();
+    led_stripe._dirty = true;
+    std::vector<size_t> firework_ambient(led_stripe.size() * 3);
     while (true){
         al_flip_display();
         al_clear_to_color(BACKGROUND_COLOR);
         nanotime_t current_time = QueryPerformanceCounter();
         bool race_started = current_time > race.race_start_time;
         
-        if (control)
-        {
-            break;
-        }
-
+        if (control){break;}
         draw_firework(firework);
         firework();
         if (race.all_finished())
@@ -1049,7 +1068,35 @@ int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led
             {
                 firework.create_rocket();
                 al_play_sample(current_time % 2 ? sample_start0 : sample_start1, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
-            }    
+            }
+            
+            for (explosion_t & explosion : firework._explosions)
+            {
+                for (particle_t & particle : explosion._particles)
+                {
+                    int32_t led = (particle._position[0] >> 16) * led_stripe.size() / 800;
+                    if (0 <= led && led < static_cast<int32_t>(led_stripe.size()))
+                    {
+                        for (size_t i = 0; i < 3; ++i)
+                        {
+                            firework_ambient[led * 3 + i] += explosion._color[i];
+                        }        
+                    }
+                }
+            }
+            size_t max = *std::max_element(firework_ambient.begin(), firework_ambient.end());
+            if (max != 0)
+            {
+                for (size_t i = 0; i < led_stripe.size(); ++i)
+                {
+                    led_stripe[i] = 0;
+                    for (size_t j = 0; j < 3; ++j)
+                    {
+                        led_stripe[i] |= (firework_ambient[i * 3 + j] * 0xFF / max) << (j * 8);
+                        firework_ambient[i * 3 + j] = 0;
+                    }
+                }
+            }
         }
        
         int32_t ylightpos = 50 - std::max(0,static_cast<int32_t>((current_time - race.race_start_time - 2000000) / 20000));
@@ -1059,6 +1106,15 @@ int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led
             int round = race.get_round(race_member);
             size_t column_pos = left_border+column_width*(i) + column_width / 2;
             bool finished = race.has_finished(race_member);
+            if (!race.all_finished() && finished)
+            {
+                size_t blinks = (current_time - race_member.get_absolut_last_time())/1000000;
+                if(blinks < 6)
+                {
+                    std::cout << "fill" << race_member._slot * led_stripe.size() / activated_player.size() << " " << led_stripe.begin() + (race_member._slot + 1) * led_stripe.size() / activated_player.size() - 1 << std::endl;
+                    std::fill(led_stripe.begin() + race_member._slot * led_stripe.size() / activated_player.size(), led_stripe.begin() + (race_member._slot + 1) * led_stripe.size() / activated_player.size(), (blinks % 2) * opt._led_stripe_white);
+                }
+            }
             if (finished && !finished_last_frame[i])
             {
                 finished_last_frame[i] = true;
@@ -1093,7 +1149,7 @@ int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led
         if (color_fade >= 0 && color_fade < 256)
         {
             std::fill(led_stripe.begin(), led_stripe.end(), mix_col(0x00FF00,  opt._led_stripe_white, color_fade));
-            led_stripe.render();
+            led_stripe._dirty = true;
         }
         if (ylightpos >= -50)
         {
@@ -1104,7 +1160,7 @@ int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led
                 if (tmp == 7)
                 {
                     std::fill(led_stripe.begin(), led_stripe.end(), 0x00FF00);
-                    led_stripe.render();
+                    led_stripe._dirty = true;
                 }
                 if (tmp < 6)        {al_play_sample(sample, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);}
                 else if (tmp == 7)  {al_play_sample(sample2, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);}
@@ -1114,7 +1170,11 @@ int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led
                 al_draw_filled_circle(100*i+display_width/2-200, ylightpos, 40, race_started ? COLOR_GREEN : visible_lights > i ? COLOR_RED : FOREGROUND_COLOR);//TODO images?
             }
         }
-        
+        led_stripe.render();
+        if (opt._debug_overlay)
+        {    
+            debug_overlay.draw(led_stripe);
+        }
         perfc.poll();
         //al_draw_textf(font, FOREGROUND_COLOR, 10, 10, ALLEGRO_ALIGN_LEFT, "FPS:%d",perfc.frames_per_second());
     }

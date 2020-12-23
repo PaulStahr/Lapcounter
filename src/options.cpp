@@ -8,7 +8,7 @@
 namespace opt_string
 {
 const char* led_stripe_white    = "led_stripe_white";
-const char* led_stripe_debug    = "led_stripe_debug";
+const char* debug_overlay       = "debug_overlay";
 const char* led_stripe_count    = "led_stripe_count";
 const char* color_error         = "color_error";
 const char* color_foreground    = "color_foreground";
@@ -30,7 +30,7 @@ std::istream & operator >> (std::istream & input, options_t & opt)
             std::string value(seperator + 1, line.end());
             if (name == opt_string::led_stripe_white)       {opt._led_stripe_white  = std::strtol(value.c_str(), nullptr, 16);}
             else if (name == opt_string::led_stripe_count)  {opt._led_stripe_count  = std::strtol(value.c_str(), nullptr, 10);}
-            else if (name == opt_string::led_stripe_debug)  {opt._led_stripe_debug         = value == "true";}
+            else if (name == opt_string::debug_overlay)     {opt._debug_overlay     = value == "true";}
             else if (name == opt_string::color_error)       {opt._color_error       = std::strtol(value.c_str(), nullptr, 16);}
             else if (name == opt_string::color_foreground)  {opt._color_foreground  = std::strtol(value.c_str(), nullptr, 16);}
             else if (name == opt_string::color_background)  {opt._color_background  = std::strtol(value.c_str(), nullptr, 16);}
@@ -55,7 +55,7 @@ std::istream & operator >> (std::istream & input, options_t & opt)
 std::ostream & operator << (std::ostream & out, options_t const & opt)
 {
     out << std::dec;
-    out << opt_string::max_player << ':' << (opt._led_stripe_debug ? "true" : "false") << std::endl;
+    out << opt_string::max_player << ':' << (opt._debug_overlay ? "true" : "false") << std::endl;
     out << opt_string::led_stripe_count << ':' << opt._led_stripe_count << std::endl;
     out << std::hex;
     out << opt_string::led_stripe_white << ':' << opt._led_stripe_white << std::endl;

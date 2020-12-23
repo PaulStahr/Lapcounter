@@ -6,8 +6,8 @@
 struct options_t
 {
     uint32_t    _led_stripe_white;
-    bool        _led_stripe_debug;
     uint32_t    _led_stripe_count;
+    bool        _debug_overlay;
     uint32_t    _color_error;
     uint32_t    _color_background;
     uint32_t    _color_foreground;

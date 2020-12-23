@@ -32,6 +32,7 @@ SOFTWARE.
 #include <limits>
 #include <algorithm>
 #include <iostream>
+#include <stdexcept>
 
 class color_t
 {
@@ -40,6 +41,28 @@ public:
     
     color_t(uint8_t r_, uint8_t g_, uint8_t b_);
     color_t(uint32_t col);
+    uint8_t & operator [](size_t c)
+    {
+        switch (c)
+        {
+            case 0: return _r;
+            case 1: return _g;
+            case 2: return _b;
+        }
+        throw std::runtime_error("Unknown index");
+    }
+
+    uint8_t const & operator [](size_t c) const
+    {
+        switch (c)
+        {
+            case 0: return _r;
+            case 1: return _g;
+            case 2: return _b;
+        }
+        throw std::runtime_error("Unknown index");
+    }
+
 };
 
 class static_particle_t
