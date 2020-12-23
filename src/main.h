@@ -3,12 +3,14 @@
 
 #include "input.h"
 
+struct led_stripe_t;
+
 ALLEGRO_DISPLAY* init(InputHandler &);
-int splash_screen(InputHandler & );
-int menu(InputHandler &);
-int fast_race(InputHandler &);
+int splash_screen(InputHandler &, led_stripe_t &);
+int menu(InputHandler &, led_stripe_t &);
+int fast_race(InputHandler &, led_stripe_t &);
 int tournee(InputHandler &);
-int anzeige (uint8_t runden, uint8_t spieler, InputHandler & handler);
+int racing_loop (uint8_t runden, std::vector<bool> const & activated, led_stripe_t &, InputHandler & handler);
 int options(InputHandler & input);
 int tournee_race(tournee_plan* tp);
 void print_time(size_t format, nanotime_t time, std::ostream & out);

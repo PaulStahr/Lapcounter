@@ -71,6 +71,7 @@ ALLEGRO_SAMPLE *sample;
 ALLEGRO_SAMPLE *sample2;
 ALLEGRO_SAMPLE *sample3;
 ALLEGRO_SAMPLE *sample4;
+ALLEGRO_SAMPLE *sample_applause;
 ALLEGRO_SAMPLE *sample_start0;
 ALLEGRO_SAMPLE *sample_start1;
 
@@ -130,6 +131,22 @@ struct overlay_button
 
 #ifdef LEDSTRIPE
 static ws2811_t *ws2811;
+struct led_stripe_t
+{
+    uint32_t begin(){return ws2811->channel[0].leds;}
+    uint32_t end(){return ws2811->channel[0].leds + ws2811->channel[0].count;}
+    size_t size(){ws2811->channel[0].count;}
+    void render(){ws2811_render(ws2811);}
+};
+#else
+struct led_stripe_t
+{
+    std::vector<uint32_t> _leds = std::vector<uint32_t>(10);
+    uint32_t * begin()  {return _leds.data();}
+    uint32_t * end()    {return _leds.data() + _leds.size();}
+    size_t size()      {return _leds.size();}
+    void render(){}
+};
 #endif
 
 static const overlay_button buttons[6] = {
@@ -203,7 +220,6 @@ void allegro_input_task(InputHandler *handler)
         }
         else if (ev.type == ALLEGRO_EVENT_KEY_DOWN)
         {
-            //ev.key_shifts;
             switch(ev.keyboard.keycode) {
                 case ALLEGRO_KEY_DOWN:  dest = DDOWN;break;
                 case ALLEGRO_KEY_UP:    dest = DUP;break;
@@ -215,15 +231,9 @@ void allegro_input_task(InputHandler *handler)
                 case ALLEGRO_KEY_2:     dest = DSENSOR1;break;
                 case ALLEGRO_KEY_3:     dest = DSENSOR2;break;
                 case ALLEGRO_KEY_4:     dest = DSENSOR3;break;
-                    
             }
             if (dest >= DSENSOR0 && dest <= DSENSOR3)
             {
-                /*std::cout << ev.keyboard.modifiers << std::endl;
-                if (ev.keyboard.modifiers & ALLEGRO_KEYMOD_SHIFT)
-                {
-                    dest = static_cast<Destination>(dest + DNSENSOR0 - DSENSOR0);
-                }*/
                 ALLEGRO_KEYBOARD_STATE key_state;
                 al_get_keyboard_state(&key_state);
                 if (al_key_down(&key_state, ALLEGRO_KEY_LSHIFT) || al_key_down(&key_state, ALLEGRO_KEY_RSHIFT)){
@@ -319,7 +329,8 @@ int main(int argc, const char* argv[]){
         }
     }
 #endif
-    splash_screen(input);
+    led_stripe_t led_stripe;
+    splash_screen(input, led_stripe);
     input.destroy();
     al_destroy_display(display);
     server.stop();
@@ -451,12 +462,13 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
     
     splash_bitmap = al_load_bitmap("images/splash.png");
     
-    sample  = al_load_sample( "sounds/beep.wav" );
-    sample2 = al_load_sample( "sounds/beep2.wav" );
-    sample3 = al_load_sample( "sounds/beep3.wav" );
-    sample4 = al_load_sample( "sounds/beep4.wav" );
-    sample_start0 = al_load_sample( "sounds/start.wav" );
-    sample_start1 = al_load_sample( "sounds/start2.wav" );
+    sample          = al_load_sample( "sounds/beep.wav" );
+    sample2         = al_load_sample( "sounds/beep2.wav" );
+    sample3         = al_load_sample( "sounds/beep3.wav" );
+    sample4         = al_load_sample( "sounds/beep4.wav" );
+    sample_applause = al_load_sample( "sounds/beep4.wav");
+    sample_start0   = al_load_sample( "sounds/start.wav" );
+    sample_start1   = al_load_sample( "sounds/start2.wav" );
 
     
     if (!font){
@@ -514,16 +526,16 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
         std::flush(log);
         stream << "</font>" << std::endl;
         
-        if (str.find("bleft") != std::string::npos)     {handler.call(InputEvent(DLEFT));}
-        if (str.find("bright") != std::string::npos)    {handler.call(InputEvent(DRIGHT));}
-        if (str.find("bup") != std::string::npos)       {handler.call(InputEvent(DUP));}
-        if (str.find("bdown") != std::string::npos)     {handler.call(InputEvent(DDOWN));}
-        if (str.find("benter") != std::string::npos)    {handler.call(InputEvent(DENTER));}
-        if (str.find("bescape") != std::string::npos)   {handler.call(InputEvent(DBACK));}
-        if (str.find("bsensor1") != std::string::npos)  {handler.call(InputEvent(DSENSOR0));}
-        if (str.find("bsensor2") != std::string::npos)  {handler.call(InputEvent(DSENSOR1));}
-        if (str.find("bsensor3") != std::string::npos)  {handler.call(InputEvent(DSENSOR2));}
-        if (str.find("bsensor4") != std::string::npos)  {handler.call(InputEvent(DSENSOR3));}
+        if (str.find("bleft")     != std::string::npos) {handler.call(InputEvent(DLEFT));}
+        if (str.find("bright")    != std::string::npos) {handler.call(InputEvent(DRIGHT));}
+        if (str.find("bup")       != std::string::npos) {handler.call(InputEvent(DUP));}
+        if (str.find("bdown")     != std::string::npos) {handler.call(InputEvent(DDOWN));}
+        if (str.find("benter")    != std::string::npos) {handler.call(InputEvent(DENTER));}
+        if (str.find("bescape")   != std::string::npos) {handler.call(InputEvent(DBACK));}
+        if (str.find("bsensor1")  != std::string::npos) {handler.call(InputEvent(DSENSOR0));}
+        if (str.find("bsensor2")  != std::string::npos) {handler.call(InputEvent(DSENSOR1));}
+        if (str.find("bsensor3")  != std::string::npos) {handler.call(InputEvent(DSENSOR2));}
+        if (str.find("bsensor4")  != std::string::npos) {handler.call(InputEvent(DSENSOR3));}
         if (str.find("bnsensor1") != std::string::npos) {handler.call(InputEvent(DNSENSOR0));}
         if (str.find("bnsensor2") != std::string::npos) {handler.call(InputEvent(DNSENSOR1));}
         if (str.find("bnsensor3") != std::string::npos) {handler.call(InputEvent(DNSENSOR2));}
@@ -551,7 +563,7 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
    return display;
 }
 
-int splash_screen(InputHandler & input){
+int splash_screen(InputHandler & input, led_stripe_t & led_stripe){
     while (true)
     {
         if (splash_bitmap)
@@ -567,19 +579,19 @@ int splash_screen(InputHandler & input){
                 case DDOWN:
                 case DLEFT:
                 case DRIGHT:
-                case DENTER:menu(input);break;
+                case DENTER:menu(input, led_stripe);break;
                 case DBACK: return 0;
                 default: break;
             }
         }
         else
         {
-            menu(input);
+            menu(input, led_stripe);
         }
     }
 }
 
-int menu(InputHandler & input){
+int menu(InputHandler & input, led_stripe_t & led_stripe){
     int selected = 0;
     while (true){
         al_clear_to_color(BACKGROUND_COLOR);
@@ -599,11 +611,11 @@ int menu(InputHandler & input){
             case DENTER:
             {
                 switch (selected){
-                    case 0: fast_race(input);break;
+                    case 0: fast_race(input, led_stripe);break;
                     case 1: tournee(input);break;
                     case 2: options(input);break;
-                    case 3: system("./update.sh");break;
-                    case 4: system("systemctl poweroff");break;
+                    case 3: if (system("./update.sh"))          {std::cerr<< "Result not null" << std::endl;};break;
+                    case 4: if (system("systemctl poweroff"))   {std::cerr<< "Result not null" << std::endl;};break;
                 } 
                 break;
             }
@@ -685,26 +697,11 @@ int options(InputHandler & input){
         InputEvent event = input.wait_for_event();
         switch (event._dest)
         {
-            case DUP:  selected = (selected + 5) % 6; break;
+            case DUP:   selected = (selected + 5) % 6; break;
             case DDOWN: selected = (selected + 1) % 6;break;
-            case DRIGHT:
-            {
-                if (selected < 4)
-                {
-                    ++opt._input_pin[selected];
-                }
-                break;
-            }case DLEFT:
-            {
-                if (selected < 4)
-                {
-                    --opt._input_pin[selected];
-                }
-                break;                    
-            }case DBACK:
-            {
-                return 0;
-            }
+            case DRIGHT:if (selected < 4){++opt._input_pin[selected];}break;
+            case DLEFT: if (selected < 4){--opt._input_pin[selected];}break;                    
+            case DBACK:return 0;
             case DENTER:
             {
                 if (selected == 4)
@@ -748,9 +745,7 @@ int show_tournee_plan(tournee_plan& tp, tournee_plan_creator* tpc){
                 al_draw_textf(font, FOREGROUND_COLOR, left_border + column_width * (j+1), top_border + row_height * (i+1),ALLEGRO_ALIGN_CENTRE, "%u", (uint32_t)tp.get_player_at(j, i)+1);
             }
         }
-        if (al_key_down(&key_state, ALLEGRO_KEY_ESCAPE)){
-            return 0;
-        }
+        if (al_key_down(&key_state, ALLEGRO_KEY_ESCAPE)){return 0;}
     }
 }
 
@@ -758,26 +753,35 @@ int show_tournee_plan(tournee_plan& tp, tournee_plan_creator* tpc){
     
 }*/
 
-int fast_race(InputHandler & input){
+int fast_race(InputHandler & input, led_stripe_t & led_stripe){
     int selected = 0;
-    int player = 2, rounds = 3;
-      
+    std::vector<bool> activated_player(opt._max_player);
+    uint8_t rounds = 3;
+    uint8_t player = 0;
+    
     while (true){
         al_clear_to_color(BACKGROUND_COLOR);
-        al_draw_textf(font, selected == 0 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 100,ALLEGRO_ALIGN_CENTRE, "Spieler: %d", player);
-        al_draw_textf(font, selected == 1 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 200,ALLEGRO_ALIGN_CENTRE, "Runden:  %d", rounds);
-        al_draw_text(font, selected == 2 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width/2, 300,ALLEGRO_ALIGN_CENTRE, "START");
+        uint32_t display_width_half = display_width / 2;
+        for (size_t i = 0; i < opt._max_player; ++i)
+        {
+            ALLEGRO_COLOR color = selected == 0 && i == player ? SELECTION_COLOR : COLOR_GRAY;
+            if (activated_player[i]){al_draw_filled_circle((i * display_width + display_width_half) / (opt._max_player), 100, 30, color);}
+            else                    {al_draw_circle       ((i * display_width + display_width_half) / (opt._max_player), 100, 30, color, 5);}
+        }
+        //al_draw_textf(font, selected == 0 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width_half, 100,ALLEGRO_ALIGN_CENTRE, "Spieler: %d", player);
+        al_draw_textf(font, selected == 1 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width_half, 200,ALLEGRO_ALIGN_CENTRE, "Runden:  %d", rounds);
+        al_draw_text(font, selected == 2 ? SELECTION_COLOR : FOREGROUND_COLOR,display_width_half, 300,ALLEGRO_ALIGN_CENTRE, "START");
         draw_screen_keyboard();
         al_flip_display();
         InputEvent event = input.wait_for_event();
         switch(event._dest)
         {
-            case DUP:selected = (selected + 2) % 3;break;
-            case DDOWN:selected = (selected + 1) % 3;break;
+            case DUP:   selected = (selected + 2) % 3;break;
+            case DDOWN: selected = (selected + 1) % 3;break;
             case DRIGHT:
             {
                 switch(selected){
-                    case 0: player++;break;
+                    case 0: player = std::min(static_cast<uint8_t>(opt._max_player - 1), static_cast<uint8_t>(player + 1));break;
                     case 1: rounds++;break;
                 }
                 break;
@@ -793,15 +797,13 @@ int fast_race(InputHandler & input){
             case DENTER:
             {
                 switch (selected){
-                    case 2: while (anzeige(rounds, player, input) == 1);break;
+                    case 0: activated_player[player] = !activated_player[player];break;
+                    case 2: while (racing_loop(rounds, activated_player, led_stripe, input) == 1);break;
                     default: break;
                 }
                 break;
             }
-            case DBACK:
-            {
-                return 0;
-            }
+            case DBACK:{return 0;}
             default:break;
         }
     }
@@ -877,14 +879,6 @@ void load_bitmap_onto_target(const char *filename)
   // 3. cleanup
   al_destroy_bitmap(loaded_bmp);
 }
-
-/*
-ALLEGRO_BITMAP *my_bmp = al_create_bitmap(1000,1000);
-al_set_target_bitmap(my_bmp);
-load_bitmap_onto_target("test.png");
-// perhaps restore the target bitmap to the back buffer, or continue
-// to modify the my_bmp with more drawing operations.
-*/
 
 int divf(int64_t n, uint64_t d) {
     return n >= 0 ? n / d : -1 - (-1 - n) / d;
@@ -963,21 +957,32 @@ void operator() (firework_t const & firework)
 }
 };
 
-int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
+int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led_stripe_t & led_stripe, InputHandler &input){
     performance_counter perfc(500);
     //uint8_t eingabepin[2]={128,32};
     race_item race(runden);
     global_race = &race;
-    std::vector<player> pl(spieler);
-    for (int i=0;i<spieler;i++)
-        race.members.emplace_back(race_data_item(pl[i]));
+    std::vector<uint8_t> slot_to_player(activated_player.size());
+    std::vector<player_t> player(std::count(activated_player.begin(), activated_player.end(),true));
+    for (size_t i = 0; i < activated_player.size(); ++i)
+    {
+        if (activated_player[i])
+        {
+            race.members.emplace_back(race_data_item(player[slot_to_player[i] = race.members.size()]));
+            race.members.back()._slot = i;
+        }
+        else
+        {
+            slot_to_player[i] = std::numeric_limits<uint8_t>::max();
+        }
+    }
     //uint16_t top_border = 0;
     uint16_t bottom_border = 0;
     uint16_t table_top = 120;
     uint16_t row_height = (display_height-table_top-bottom_border)/5;//Todo
     uint16_t left_border = 5;
     uint16_t right_border = 5;
-    uint16_t column_width = (display_width-left_border-right_border)/(spieler);
+    uint16_t column_width = (display_width-left_border-right_border)/(race.members.size());
     table_top += 30;
     
     size_t visible_lights = 0;
@@ -985,8 +990,8 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
     race.race_start_time = QueryPerformanceCounter() + frequency * 7;
     uint8_t control = 0;
     
-    std::function<void(InputEvent const & event)> callback = [&race, &control](InputEvent const & event){
-        if (event._dest >= DSENSOR0 && event._dest < DSENSOR0 + race.member_count())
+    std::function<void(InputEvent const & event)> callback = [&race, &control, slot_to_player](InputEvent const & event){
+        if (event._dest >= DSENSOR0 && event._dest < DSENSOR0 + slot_to_player.size() && slot_to_player[event._dest - DSENSOR0] != std::numeric_limits<uint8_t>::max())
         {
             bool race_started = event._when > race.race_start_time;
             if (!race_started)
@@ -995,13 +1000,18 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
             }
             else
             {
-                race.add_time(race.members[event._dest - DSENSOR0],event._when);
+                race_data_item & item = race.members[slot_to_player[event._dest - DSENSOR0]];
+                race.add_time(item,event._when);
                 al_play_sample(sample3, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
+                if (race.has_finished(item))
+                {
+                    al_play_sample(sample_applause, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
+                }
             }
         }
-        if (event._dest >= DNSENSOR0 && event._dest < DSENSOR0 + race.member_count())
+        if (event._dest >= DNSENSOR0 && event._dest < DSENSOR0 + slot_to_player.size() && slot_to_player[event._dest - DNSENSOR0] != std::numeric_limits<uint8_t>::max())
         {
-            race.members[event._dest - DNSENSOR0].pop_time();
+            race.members[slot_to_player[event._dest - DNSENSOR0]].pop_time();
         }
         else if (event._dest == DBACK)
         {
@@ -1018,10 +1028,8 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
     std::vector<bool> finished_last_frame(race.member_count(), false);
     // al_draw_text(font, al_map_rgb( 255, 0, 0), 200, 100, ALLEGRO_ALIGN_LEFT,"CONGRATULATIONS" );
     firework_drawer_t draw_firework;
-#ifdef LEDSTRIPE
-    std::fill(ws2811->channel[0].leds, ws2811->channel[0].leds + ws2811->channel[0].count, 0x0000FF);
-    ws2811_render(ws2811);
-#endif
+    std::fill(led_stripe.begin(), led_stripe.end(), 0x0000FF);
+    led_stripe.end();
     while (true){
         al_flip_display();
         al_clear_to_color(BACKGROUND_COLOR);
@@ -1033,12 +1041,6 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
             break;
         }
 
-        /*al_draw_textf(font, FOREGROUND_COLOR, left_border, top_border + row_height * 1,ALLEGRO_ALIGN_LEFT, "Place:");
-        al_draw_textf(font, FOREGROUND_COLOR, left_border, top_border + row_height * 2,ALLEGRO_ALIGN_LEFT, "Lap:");
-        al_draw_textf(font, FOREGROUND_COLOR, left_border, top_border + row_height * 3,ALLEGRO_ALIGN_LEFT, "All:");
-        al_draw_textf(font, FOREGROUND_COLOR, left_border, top_border + row_height * 4,ALLEGRO_ALIGN_LEFT, "Time:");
-        al_draw_textf(font, FOREGROUND_COLOR, left_border, top_border + row_height * 5,ALLEGRO_ALIGN_LEFT, "Last:");
-        al_draw_textf(font, FOREGROUND_COLOR, left_border, top_border + row_height * 6,ALLEGRO_ALIGN_LEFT, "Best:");*/
         draw_firework(firework);
         firework();
         if (race.all_finished())
@@ -1046,14 +1048,7 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
             if (create_new_rocket(firework._gen))
             {
                 firework.create_rocket();
-                if (current_time % 2)
-                {
-                    al_play_sample(sample_start0, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
-                }
-                else
-                {
-                    al_play_sample(sample_start1, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
-                }
+                al_play_sample(current_time % 2 ? sample_start0 : sample_start1, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
             }    
         }
        
@@ -1070,31 +1065,21 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
                 firework._explosions.emplace_back(300, std::array<int32_t, 2>({0x10000*static_cast<int32_t>(column_pos + column_width / 2),  0x10000*(480 - (table_top + 30))}), std::array<int32_t, 2>({0,0}), 10000, firework._timestep, firework._gen);
             }
             {
-            //al_draw_bitmap(car_bitmaps[i], column_pos,40,0);
+                ALLEGRO_BITMAP *bitmap = car_bitmaps[race_member._slot];
                 int current_place = race_member.round_times.size() == 0 ? race.member_count() : race.get_current_place(race_member);
-                float w = al_get_bitmap_width(car_bitmaps[i]), h =al_get_bitmap_height(car_bitmaps[i]); 
+                float w = al_get_bitmap_width(bitmap), h =al_get_bitmap_height(bitmap); 
                 float sh = 0.25 * display_width * h * 0.9 / w;
-                al_draw_scaled_bitmap(car_bitmaps[i], 0, 0, w,h, column_pos - display_width * 0.25 * 0.45, current_place * 40 - sh/2+5, display_width * 0.25 * 0.9, sh, 0);
+                al_draw_scaled_bitmap(bitmap, 0, 0, w,h, column_pos - display_width * 0.25 * 0.45, current_place * 40 - sh/2+5, display_width * 0.25 * 0.9, sh, 0);
             }
             al_draw_text(font, FOREGROUND_COLOR, column_pos, table_top + row_height * 0,  ALLEGRO_ALIGN_LEFT, race_member.belongs_to_player->first_name.c_str());
             al_draw_textf(font, FOREGROUND_COLOR, column_pos, table_top + row_height * 1, ALLEGRO_ALIGN_RIGHT, "%d",round);
             al_draw_textf(font_small, FOREGROUND_COLOR, column_pos, table_top + row_height * 1+20, ALLEGRO_ALIGN_LEFT, "/%d",runden);
 
-            /*if (!race_started){
-                draw_time(font, FOREGROUND_COLOR, column_pos, table_top + row_height * 2, time_format, std::numeric_limits<nanotime_t>::max());
-            }else{
-                draw_time(font, FOREGROUND_COLOR, column_pos, table_top + row_height * 2, time_format, (finished ? race_member.get_absolut_last_time() : current_time) - race.race_start_time);
-            }*/
-            
-            //draw_time(font, FOREGROUND_COLOR, column_pos, table_top + row_height * 3, ALLEGRO_ALIGN_CENTER, time_format, round < 1 || finished ? std::numeric_limits<nanotime_t>::max() : (current_time - race_member.get_absolut_last_time()));
-            
             draw_time(font, finished || race_member.get_best_time_index() + 1== race_member.round_times.size() ? SELECTION_COLOR : FOREGROUND_COLOR, column_pos, table_top + row_height * 2, ALLEGRO_ALIGN_CENTER, time_format, finished ? race_member.get_best_time() : race_member.get_relative_last_time());
             draw_time(font, FOREGROUND_COLOR, column_pos, table_top + row_height * 3, ALLEGRO_ALIGN_CENTER, time_format, race_member.get_absolut_last_time() == std::numeric_limits<nanotime_t>::max() ? std::numeric_limits<nanotime_t>::max() : (race_member.get_absolut_last_time() - race.race_start_time));
             
             draw_ptime(font_small, FOREGROUND_COLOR, column_pos+10, table_top + row_height * 4, ALLEGRO_ALIGN_CENTER, time_format, race.timediff_to_first(race_member));
             //draw_time(FOREGROUND_COLOR, column_pos, table_top + row_height * 5, time_format, race_member.get_best_time());
-            
-            /**/
             if (finished)
             {
                 int place = race.get_place(race_member);
@@ -1104,41 +1089,27 @@ int anzeige (uint8_t runden, uint8_t spieler, InputHandler &input){
                 }
             }
         }
-#ifdef LEDSTRIPE
         int32_t color_fade = static_cast<int32_t>((current_time - race.race_start_time - 2000000) / 20000); 
         if (color_fade >= 0 && color_fade < 256)
         {
-            std::fill(ws2811->channel[0].leds, ws2811->channel[0].leds + ws2811->channel[0].count, mix_col(0x00FF00,  opt._led_stripe_white, color_fade));
-            ws2811_render(ws2811);
+            std::fill(led_stripe.begin(), led_stripe.end(), mix_col(0x00FF00,  opt._led_stripe_white, color_fade));
+            led_stripe.render();
         }
-#endif
         if (ylightpos >= -50)
         {
             al_draw_filled_rectangle (display_width/2-250,0,display_width/2+250,ylightpos + 50, FOREGROUND_COLOR);
             size_t tmp = 7 + divf(current_time - race.race_start_time,frequency);
-            
-            
             if (visible_lights != tmp)
             {
-#ifdef LEDSTRIPE
                 if (tmp == 7)
                 {
-                    std::fill(ws2811->channel[0].leds, ws2811->channel[0].leds + ws2811->channel[0].count, 0x00FF00);
-                    ws2811_render(ws2811);
+                    std::fill(led_stripe.begin(), led_stripe.end(), 0x00FF00);
+                    led_stripe.render();
                 }
-                
-#endif
-                if (tmp < 6)
-                {
-                    al_play_sample(sample, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
-                }
-                else if (tmp == 7)
-                {
-                    al_play_sample(sample2, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
-                }
+                if (tmp < 6)        {al_play_sample(sample, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);}
+                else if (tmp == 7)  {al_play_sample(sample2, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);}
             }
             visible_lights = tmp;
-            
             for (size_t i=0;i<5;i++){
                 al_draw_filled_circle(100*i+display_width/2-200, ylightpos, 40, race_started ? COLOR_GREEN : visible_lights > i ? COLOR_RED : FOREGROUND_COLOR);//TODO images?
             }

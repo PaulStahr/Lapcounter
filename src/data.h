@@ -28,7 +28,7 @@ SOFTWARE.
 
 #ifndef DATA_H
 #define DATA_H
-class player{
+class player_t{
     public:
     std::string first_name;
     std::string second_name;
@@ -40,9 +40,10 @@ class player{
 class race_data_item{
     public:
     race_data_item();
-    race_data_item(player &belong);
+    race_data_item(player_t &belong);
     std::vector<nanotime_t> round_times;
-    player *belongs_to_player;
+    player_t *belongs_to_player;
+    uint8_t _slot;
     
     nanotime_t get_absolut_last_time() const;
     nanotime_t get_relative_last_time() const;
@@ -90,9 +91,9 @@ class race_item{
 namespace SERIALIZE
 {
 template <>
-std::ostream & write_value(std::ostream & out, player const & value);
+std::ostream & write_value(std::ostream & out, player_t const & value);
 template <>
-std::istream & read_value(std::istream & in, player & value);
+std::istream & read_value(std::istream & in, player_t & value);
 template <>
 std::ostream & write_value(std::ostream & out, race_data_item const & value);
 template <>

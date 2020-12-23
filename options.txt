@@ -1,4 +1,5 @@
 led_stripe_white:70FFFF
+led_debug:true
 color_foreground:FFFFFF
 color_background:000000
 color_selection:FFFF00
@@ -7,3 +8,4 @@ input_pin_0:0
 input_pin_1:2
 input_pin_2:3
 input_pin_3:4
+max_player:4

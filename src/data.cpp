@@ -28,7 +28,7 @@ SOFTWARE.
 #include <algorithm>
 
 namespace SERIALIZE{
-std::ostream & write_value(std::ostream & out, player const & value)
+std::ostream & write_value(std::ostream & out, player_t const & value)
 {
     write_value(out, value.first_name);
     write_value(out, value.second_name);
@@ -37,7 +37,7 @@ std::ostream & write_value(std::ostream & out, player const & value)
     return out;
 }
 
-std::istream & read_value(std::istream & in, player & value)
+std::istream & read_value(std::istream & in, player_t & value)
 {
     read_value(in, value.first_name);
     read_value(in, value.second_name);
@@ -79,7 +79,7 @@ std::istream & read_value(std::istream & in, race_item & value)
 }*/
 }
 
-race_data_item::race_data_item(player &belong) : belongs_to_player(&belong){}
+race_data_item::race_data_item(player_t &belong) : belongs_to_player(&belong){}
     
 race_data_item::race_data_item() : belongs_to_player(nullptr){}
     
@@ -88,11 +88,7 @@ nanotime_t race_data_item::get_absolut_last_time() const{
 }
     
 nanotime_t race_data_item::get_relative_last_time() const{
-    if (round_times.size() < 2)
-    {
-        return std::numeric_limits<nanotime_t>::max();
-    }
-    return round_times.back() - round_times[round_times.size() - 2];
+    return round_times.size() < 2 ? std::numeric_limits<nanotime_t>::max() : (round_times.back() - round_times[round_times.size() - 2]);
 }
 
 void race_item::add_time (race_data_item & item, nanotime_t time){
@@ -139,12 +135,9 @@ size_t race_data_item::get_best_time_index() const{
     return index;
 }
 
-bool race_item::has_finished(race_data_item const & item) const{
-    return item.round_times.size() > rounds;
-}
+bool race_item::has_finished(race_data_item const & item) const{return item.round_times.size() > rounds;}
 
-race_item::race_item(size_t rounds_): rounds(rounds_){
-}
+race_item::race_item(size_t rounds_): rounds(rounds_){}
 
 size_t race_item::member_count() const{
     return members.size();
@@ -180,17 +173,7 @@ size_t race_item::get_first_player(size_t round) const
     return player;
 }
 
-bool race_item::all_finished() const
-{
-    for (size_t i = 0; i < member_count(); ++i)
-    {
-        if (!has_finished(members[i]))
-        {
-            return false;
-        }
-    }
-    return true;
-}
+bool race_item::all_finished() const{return std::all_of(members.begin(), members.begin() + member_count(), [this](race_data_item const & member){return this->has_finished(member);});}
 
 nanotime_t race_item::timediff_to_first(race_data_item const & item) const{
     size_t index = item.round_times.size() - 1;
