@@ -89,6 +89,7 @@ WebServer server;
 nanotime_t frequency;
 int display_height;
 int display_width;
+options_t opt;
 
 #ifdef RASPBERRY_PI
 InputHandler *global_input = nullptr;
@@ -102,14 +103,14 @@ void sensor_interrupt_input_task()
     }
 }
 
-void sensor_poll_input_task(InputHandler *handler, option_t *opt)
+void sensor_poll_input_task(InputHandler *handler)
 {
     bool active[4];
     while (handler->is_valid())
     {
         for (size_t i = 0; i < 4; ++i)
         {
-            bool current = digitalRead(opt->_input_pin[i])==1;
+            bool current = digitalRead(opt._input_pin[i])==1;
             if (current && !active[i]){
                 InputEvent event(static_cast<Destination>(DSENSOR0 + i), QueryPerformanceCounter());
                 handler->call(event);
@@ -287,8 +288,6 @@ uint32_t mix_col(uint32_t a, uint32_t b, uint8_t fade)
         | (((fade * ((b >> 8)  & 0xFF) + (255 - fade) * (0xFF & (a >> 8 ))) / 255) << 8)
         | (((fade * ((b >> 16) & 0xFF) + (255 - fade) * (0xFF & (a >> 16))) / 255) << 16);
 }
-
-options_t opt;
 
 int main(int argc, const char* argv[]){
     std::string print_plan ("--print_plan");
