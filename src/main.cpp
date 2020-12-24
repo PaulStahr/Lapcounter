@@ -102,7 +102,7 @@ void sensor_interrupt_input_task()
     }
 }
 
-void sensor_poll_input_task(InputHandler *handler, Options *opt)
+void sensor_poll_input_task(InputHandler *handler, option_t *opt)
 {
     bool active[4];
     while (handler->is_valid())
