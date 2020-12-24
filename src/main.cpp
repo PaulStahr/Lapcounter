@@ -102,14 +102,14 @@ void sensor_interrupt_input_task()
     }
 }
 
-void sensor_poll_input_task(InputHandler *handler)
+void sensor_poll_input_task(InputHandler *handler, Options *opt)
 {
     bool active[4];
     while (handler->is_valid())
     {
         for (size_t i = 0; i < 4; ++i)
         {
-            bool current = digitalRead(opt._input_pin[i])==1;
+            bool current = digitalRead(opt->_input_pin[i])==1;
             if (current && !active[i]){
                 InputEvent event(static_cast<Destination>(DSENSOR0 + i), QueryPerformanceCounter());
                 handler->call(event);
@@ -138,7 +138,7 @@ struct led_stripe_t
     uint32_t * end()                {return ws2811->channel[0].leds + ws2811->channel[0].count;}
     uint32_t const * begin() const  {return ws2811->channel[0].leds;}
     uint32_t const * end()   const  {return ws2811->channel[0].leds + ws2811->channel[0].count;}
-    size_t size() const             {ws2811->channel[0].count;}
+    size_t size() const             {return ws2811->channel[0].count;}
     void render()                   {if (_dirty){ws2811_render(ws2811);_dirty = false;}}
     uint32_t        & operator[] (size_t index)      {return ws2811->channel[0].leds[index];}
     uint32_t const  & operator[] (size_t index) const{return ws2811->channel[0].leds[index];}
@@ -336,16 +336,16 @@ int main(int argc, const char* argv[]){
         throw std::runtime_error("No wiring pi");
     for (size_t i = 0; i < 4; ++i)
     {
-        pinMode(input_pins[i], INPUT);
+        pinMode(opt._input_pin[i], INPUT);
     }
     global_input = &input;
     void (*interrupt_functions[4])(void) = {&sensor_interrupt_input_task<0>,&sensor_interrupt_input_task<1>,&sensor_interrupt_input_task<2>,&sensor_interrupt_input_task<3>};
     for (size_t i = 0; i < 4; ++i)
     {
-        if (wiringPiISR(input_pins[i], INT_EDGE_RISING, interrupt_functions[i]) < 0)
+        if (wiringPiISR(opt._input_pin[i], INT_EDGE_RISING, interrupt_functions[i]) < 0)
         {
             std::cout << "No interrupt setup, activating polling fallback" << std::endl;
-            boost::thread polling_thread(sensor_poll_input_task, &input);
+            boost::thread polling_thread(sensor_poll_input_task, &input, &opt);
             break;
         }
     }
@@ -448,8 +448,8 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
 #endif
     frequency = QueryPerformanceFrequency();
 
-    ALLEGRO_MONITOR_INFO info;
-    al_get_monitor_info(0, &info);
+    //ALLEGRO_MONITOR_INFO info;
+    //al_get_monitor_info(0, &info);
     //ALLEGRO_DISPLAY *display = al_create_display(info.x2 - info.x1, info.y2 - info.y1);
     ALLEGRO_DISPLAY *display = al_create_display(800, 480);
     font_small = al_load_ttf_font("fonts/courbd.ttf",30,0 );
@@ -470,7 +470,6 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
     COLOR_GREEN         = al_map_rgb(0,255,0);
     COLOR_YELLOW        = al_map_rgb(255,255,0);
 
-    //If user runs it from somewhere else...
     ALLEGRO_PATH* path = al_get_standard_path(ALLEGRO_RESOURCES_PATH);
     al_change_directory(al_path_cstr(path,ALLEGRO_NATIVE_PATH_SEP));
     
@@ -670,16 +669,16 @@ int tournee(InputHandler & input){
             case DDOWN:  selected = (selected + 1) % 5;break;
             case DRIGHT: {
                 switch(selected){
-                    case 0: player ++;break;
-                    case 1: slots ++;break;
-                    case 2: rounds ++;break;
-                    case 3: equal_slots ++;break;
+                    case 0: ++player;       break;
+                    case 1: ++slots;        break;
+                    case 2: ++rounds;       break;
+                    case 3: ++equal_slots;  break;
                 }break;}
             case DLEFT:{
                 switch(selected){
-                    case 0: player = std::max(0,player-1);break;
-                    case 1: slots = std::max(0,slots-1);break;
-                    case 2: rounds = std::max(0,rounds-1);break;
+                    case 0: player      = std::max(0, player-1);break;
+                    case 1: slots       = std::max(0, slots -1);break;
+                    case 2: rounds      = std::max(0, rounds-1);break;
                     case 3: equal_slots = std::max(1, equal_slots - 1);break;
                 }break;
             }
@@ -920,17 +919,14 @@ void operator() (firework_t const & firework)
 {
     for (auto const & rocket : firework._rockets)
     {
-       // al_draw_filled_circle(rocket._rocket._position[0] >> 16, 480 - (rocket._rocket._position[1] >> 16),2,COLOR_YELLOW);
         varrayl.push_back(ALLEGRO_VERTEX({static_cast<float>(rocket._rocket._position[0] >> 16), static_cast<float>(480 - (rocket._rocket._position[1] >> 16)), 0, 0, 0, COLOR_YELLOW}));
        
         //draws the trails.
         for (std::array<int32_t, 2> const & particle : rocket._trail)
         {
-            //std::cout << "trail " << (particle[0] >> 16) << ' ' << (particle[1] >> 16) << std::endl;
             int16_t x = particle[0] >> 16, y = 480 - (particle[1] >> 16);
             if (x >= 0 && x <= 800 && y >= 0 && y <= 480)
             {
-               // al_draw_filled_circle(x, y,1,COLOR_YELLOW);
                 varrays.push_back(ALLEGRO_VERTEX({static_cast<float>(x), static_cast<float>(y), 0, 0, 0, COLOR_YELLOW}));
             }
         }
@@ -945,7 +941,6 @@ void operator() (firework_t const & firework)
             int16_t x = particle._position[0] >> 16, y = 480 - (particle._position[1] >> 16);
             if (x >= 0 && x <= 800 && y >= 0 && y <= 480)
             {
-               // al_draw_filled_circle(x, y,2,col);
                 varrayl.push_back(ALLEGRO_VERTEX({static_cast<float>(x), static_cast<float>(y), 0, 0, 0, col}));
             }
         }
@@ -966,21 +961,11 @@ void operator() (firework_t const & firework)
     glDisableClientState(GL_VERTEX_ARRAY);
     varrays.clear();
     varrayl.clear();
-    
-    /*ALLEGRO_VERTEX_BUFFER* vbuf = al_create_vertex_buffer(NULL , varrayl.data() , varrayl.size(), ALLEGRO_PRIM_BUFFER_DYNAMIC);
-    glPointSize(2);
-    al_draw_vertex_buffer(vbuf , NULL , 0 , varrayl.size(), ALLEGRO_PRIM_POINT_LIST);
-    al_destroy_vertex_buffer(vbuf);
-    vbuf = al_create_vertex_buffer(NULL , varrays.data() , varrays.size(), ALLEGRO_PRIM_BUFFER_DYNAMIC);
-    glPointSize(1);
-    al_draw_vertex_buffer(vbuf , NULL , 0 , varrays.size(), ALLEGRO_PRIM_POINT_LIST);
-    al_destroy_vertex_buffer(vbuf);*/
 }
 };
 
 int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led_stripe_t & led_stripe, InputHandler &input){
     performance_counter perfc(500);
-    //uint8_t eingabepin[2]={128,32};
     race_item race(runden);
     global_race = &race;
     std::vector<uint8_t> slot_to_player(activated_player.size());
@@ -997,7 +982,6 @@ int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led
             slot_to_player[i] = std::numeric_limits<uint8_t>::max();
         }
     }
-    //uint16_t top_border = 0;
     uint16_t bottom_border = 0;
     uint16_t table_top = 120;
     uint16_t row_height = (display_height-table_top-bottom_border)/5;//Todo
@@ -1097,6 +1081,7 @@ int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led
                     }
                 }
             }
+            led_stripe._dirty = true;
         }
        
         int32_t ylightpos = 50 - std::max(0,static_cast<int32_t>((current_time - race.race_start_time - 2000000) / 20000));
@@ -1134,7 +1119,7 @@ int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led
             draw_time(font, finished || race_member.get_best_time_index() + 1== race_member.round_times.size() ? SELECTION_COLOR : FOREGROUND_COLOR, column_pos, table_top + row_height * 2, ALLEGRO_ALIGN_CENTER, time_format, finished ? race_member.get_best_time() : race_member.get_relative_last_time());
             draw_time(font, FOREGROUND_COLOR, column_pos, table_top + row_height * 3, ALLEGRO_ALIGN_CENTER, time_format, race_member.get_absolut_last_time() == std::numeric_limits<nanotime_t>::max() ? std::numeric_limits<nanotime_t>::max() : (race_member.get_absolut_last_time() - race.race_start_time));
             
-            draw_ptime(font_small, FOREGROUND_COLOR, column_pos+10, table_top + row_height * 4, ALLEGRO_ALIGN_CENTER, time_format, race.timediff_to_first(race_member));
+            draw_ptime(font_small, FOREGROUND_COLOR, column_pos + 10, table_top + row_height * 4, ALLEGRO_ALIGN_CENTER, time_format, race.timediff_to_first(race_member));
             //draw_time(FOREGROUND_COLOR, column_pos, table_top + row_height * 5, time_format, race_member.get_best_time());
             if (finished)
             {
