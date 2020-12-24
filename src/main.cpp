@@ -344,7 +344,7 @@ int main(int argc, const char* argv[]){
         if (wiringPiISR(opt._input_pin[i], INT_EDGE_RISING, interrupt_functions[i]) < 0)
         {
             std::cout << "No interrupt setup, activating polling fallback" << std::endl;
-            boost::thread polling_thread(sensor_poll_input_task, &input, &opt);
+            boost::thread polling_thread(sensor_poll_input_task, &input);
             break;
         }
     }
