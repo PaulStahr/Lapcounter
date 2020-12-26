@@ -969,6 +969,10 @@ int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led
     global_race = &race;
     std::vector<uint8_t> slot_to_player(activated_player.size());
     std::vector<player_t> player(std::count(activated_player.begin(), activated_player.end(),true));
+    if (player.size() == 0)
+    {
+        return 0;
+    }
     for (size_t i = 0; i < activated_player.size(); ++i)
     {
         if (activated_player[i])
@@ -1006,11 +1010,10 @@ int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led
             else
             {
                 race_data_item & item = race.members[slot_to_player[event._dest - DSENSOR0]];
-                race.add_time(item,event._when);
-                al_play_sample(sample3, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
-                if (race.has_finished(item))
+                if (!race.has_finished(item))
                 {
-                    al_play_sample(sample_applause, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
+                    race.add_time(item,event._when);
+                    al_play_sample(race.has_finished(item) ? sample_applause : sample3, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
                 }
             }
         }
