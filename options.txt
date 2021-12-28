@@ -1,7 +1,7 @@
 led_stripe_white:70FFFF
 led_stripe_start:70FFFF
 led_stripe_prestart:70FFFF
-debug_overlay:true
+debug_overlay:false
 color_foreground:FFFFFF
 color_background:000000
 color_selection:FFFF00
