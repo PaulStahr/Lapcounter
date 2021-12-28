@@ -188,14 +188,12 @@ void allegro_input_task(InputHandler *handler)
     al_register_event_source(event_queue, al_get_keyboard_event_source());
     al_register_event_source(event_queue, al_get_mouse_event_source());
     al_register_event_source(event_queue, al_get_joystick_event_source());
-    //float lastaxispos[10];
     while (handler->is_valid())
     {
         ALLEGRO_EVENT ev;
         al_wait_for_event(event_queue, &ev);
         Destination dest = DUNDEF;
         size_t buttonSize = 40;
-        std::cout << ev.type << std::endl;
         if (ev.type == ALLEGRO_EVENT_JOYSTICK_AXIS)
         {
             switch (ev.joystick.stick * 2 + ev.joystick.axis)
@@ -207,12 +205,9 @@ void allegro_input_task(InputHandler *handler)
                         if (ev.joystick.pos > 0.5){dest = DDOWN;}
                     break;
             }
-            //std::cout << ev.joystick.stick * 2 + ev.joystick.axis << ' ' << ev.joystick.pos;
-            //lastaxispos[ev.joystick.stick * 2 + ev.joystick.axis] = ev.joystick.pos;
         }
         if (ev.type == ALLEGRO_EVENT_JOYSTICK_BUTTON_DOWN)
         {
-            std::cout << ev.joystick.button << std::endl;
             switch (ev.joystick.button)
             {
                 case 0:     dest = DENTER;break;
@@ -496,7 +491,6 @@ ALLEGRO_DISPLAY * init(InputHandler & handler){
     }
     server.setCommandExecutor([&handler](std::string str, std::ostream & stream)
     {
-        //std::cout << str << std::endl;
         stream << "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-type: text/html\r\n\r\n";
         HTML::LogHtml log(stream);
         stream << "<head><meta http-equiv=\"refresh\" content=\"1\" /></head>" << std::endl;
@@ -1029,14 +1023,12 @@ int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led
     input.register_callback(callback);
     
     std::bernoulli_distribution create_new_rocket(0.2);
-    //std::cout << al_get_display_refresh_rate(al_get_current_display()) << std::endl;
-    //refresh_rate = al_get_display_refresh_rate(al_get_current_display());
     uint8_t refresh_rate = 30;
     firework_t firework(800<<16, 480<<16, 1600 / refresh_rate);
     std::vector<bool> finished_last_frame(race.member_count(), false);
     // al_draw_text(font, al_map_rgb( 255, 0, 0), 200, 100, ALLEGRO_ALIGN_LEFT,"CONGRATULATIONS" );
     firework_drawer_t draw_firework;
-    std::fill(led_stripe.begin(), led_stripe.end(), 0x0000FF);
+    std::fill(led_stripe.begin(), led_stripe.end(), opt._led_stripe_prestart);
     led_stripe._dirty = true;
     std::vector<size_t> firework_ambient(led_stripe.size() * 3);
     while (true){
@@ -1098,7 +1090,6 @@ int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led
                 size_t blinks = (current_time - race_member.get_absolut_last_time())/1000000;
                 if(blinks < 6)
                 {
-                    std::cout << "fill" << race_member._slot * led_stripe.size() / activated_player.size() << " " << led_stripe.begin() + (race_member._slot + 1) * led_stripe.size() / activated_player.size() - 1 << std::endl;
                     std::fill(led_stripe.begin() + race_member._slot * led_stripe.size() / activated_player.size(), led_stripe.begin() + (race_member._slot + 1) * led_stripe.size() / activated_player.size(), (blinks % 2) * opt._led_stripe_white);
                 }
             }
@@ -1135,7 +1126,7 @@ int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led
         int32_t color_fade = static_cast<int32_t>((current_time - race.race_start_time - 2000000) / 20000); 
         if (color_fade >= 0 && color_fade < 256)
         {
-            std::fill(led_stripe.begin(), led_stripe.end(), mix_col(0x00FF00,  opt._led_stripe_white, color_fade));
+            std::fill(led_stripe.begin(), led_stripe.end(), mix_col(opt._led_stripe_start,  opt._led_stripe_white, color_fade));
             led_stripe._dirty = true;
         }
         if (ylightpos >= -50)
@@ -1146,7 +1137,7 @@ int racing_loop (uint8_t runden, std::vector<bool> const & activated_player, led
             {
                 if (tmp == 7)
                 {
-                    std::fill(led_stripe.begin(), led_stripe.end(), 0x00FF00);
+                    std::fill(led_stripe.begin(), led_stripe.end(), opt._led_stripe_start);
                     led_stripe._dirty = true;
                 }
                 if (tmp < 6)        {al_play_sample(sample, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);}

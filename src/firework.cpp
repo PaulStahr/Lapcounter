@@ -115,7 +115,6 @@ void firework_t::operator()()
             }
             if (create_explosion)
             {
-                std::cout << "explosion" << std::endl;
                 _explosions.emplace_back(100, read->_rocket._position, read->_rocket._direction, _gen() % 10000, _timestep, _gen);
             }
         }
