@@ -1,0 +1,19 @@
+name: C++ Ci
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Libs
+      run: sudo apt-get update; sudo apt-get install -y liballegro5-dev freeglut3-dev libboost-thread-dev libboost-system-dev
+    - name: Build with Make
+      run: mkdir -p build; make -j 4 program
