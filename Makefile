@@ -32,7 +32,7 @@ $(BUILD)/mainpi.o: $(SRC)/main.cpp
 	g++ -c $(SRC)/main.cpp -g $(CFLAGS) $(allegro-config --libs) -DRASPBERRY_PI -o $(BUILD)/mainpi.o
 
 $(DOC)/documentation.pdf: $(DOC)/documentation.tex
-	pdflatex $(DOC)/documentation.tex -output-directory $(DOC}/
+	pdflatex -output-directory $(DOC)/ $(DOC)/documentation.tex
 
 program: $(BUILD)/main.o $(OFILES)
 	g++ $(OFILES) $(BUILD)/main.o $(CFLAGS) $(allegro-config --libs) -lallegro $(ALLEGRO_FLAGS) -lboost_thread -lboost_system -lglut -lGL -o program
