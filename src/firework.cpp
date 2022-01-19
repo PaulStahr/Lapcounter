@@ -79,16 +79,7 @@ explosion_t::explosion_t(size_t num_particles_, std::array<int32_t, 2> const & p
 
 bool explosion_t::operator()(int32_t gravitation)
 {
-    auto write = _particles.begin();
-    for (auto read = _particles.begin(); read != _particles.end(); ++read)
-    {
-        if ((*read)(gravitation))
-        {
-            *write = *read;
-            ++write;
-        }
-    }
-    _particles.erase(write, _particles.end()); 
+    _particles.erase(std::remove_if(_particles.begin(), _particles.end(), [gravitation](particle_t & particle){return !particle(gravitation);}), _particles.end());
     return !_particles.empty();
 }
 
@@ -103,32 +94,16 @@ void firework_t::create_rocket()
 
 void firework_t::operator()()
 {
-    {
-        auto write = _rockets.begin();
-        for (auto read = _rockets.begin(); read != _rockets.end(); ++read)
+    _rockets.erase(std::remove_if(_rockets.begin(), _rockets.end(),
+                                  [this](rocket_t & rocket)
         {
             bool create_explosion;
-            if ((*read)(create_explosion, _gravitation))
-            {
-                *write = *read;
-                ++write;
-            }
+            bool delete_rocket = !rocket(create_explosion, _gravitation);
             if (create_explosion)
             {
-                _explosions.emplace_back(100, read->_rocket._position, read->_rocket._direction, _gen() % 10000, _timestep, _gen);
+                _explosions.emplace_back(100, rocket._rocket._position, rocket._rocket._direction, _gen() % 10000, _timestep, _gen);
             }
-        }
-        _rockets.erase(write, _rockets.end());
-    }
-    //str2.erase(std::remove_if(_rockets.begin(), _rockets.end(),[](unsigned char x){return std::isspace(x);}),
-    auto write = _explosions.begin();
-    for (auto read = _explosions.begin(); read != _explosions.end(); ++read)
-    {
-        if ((*read)(_gravitation))
-        {
-            *write = *read;
-            ++write;
-        }
-    }
-    _explosions.erase(write, _explosions.end());
+            return delete_rocket;
+        }), _rockets.end());
+    _explosions.erase(std::remove_if(_explosions.begin(), _explosions.end(), [this](explosion_t & explosion){return !explosion(_gravitation);}), _explosions.end());
 }
