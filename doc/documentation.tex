@@ -320,9 +320,13 @@ The program uses Allegro to show the results. In theory it should be possible to
 \begin{lstlisting}[language=bash,caption={Required packages},breaklines=true]
 sudo aptitude install liballegro5-dev freeglut3-dev libboost-thread-dev libboost-system-dev
 \end{lstlisting}
-Then build with
+Then build with either
 \begin{lstlisting}[language=bash,caption={Compile},breaklines=true]
 mkdir -p build; make -j 4 program
+\end{lstlisting}
+Or if you are using the rasperry-pi
+\begin{lstlisting}[language=bash,caption={Compile Pi},breaklines=true]
+mkdir -p build; make -j 4 programpi
 \end{lstlisting}
 \section{Controls}
 There are 4 inputs at which the program listenens to which can generate events which will be handled by the program.
