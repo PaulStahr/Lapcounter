@@ -22,6 +22,8 @@
 \usepackage{verbatim}
 \usepackage{float}
 \usepackage{wrapfig}
+\usepackage{xcolor}
+\usepackage{listings}
 \newcommand{\slots}{slots}
 \renewcommand{\bf}{\textbf}
 \usepackage[siunitx]{circuitikz}
@@ -29,6 +31,12 @@
 \usetikzlibrary{fit}
 	\author{Paul Stahr}
 	\title{Lapcounter with Raspberry pi}
+
+\lstset{backgroundcolor=\color{lightgray!60},
+  frame=trbl,
+  rulecolor=\color{black!30},
+  xrightmargin=7pt}
+
 \begin{document}
 \maketitle
 \chapter{Hardware}
@@ -308,7 +316,14 @@ For the connections to the light barrier and the electronic I used usb connector
 \end{comment}
 \chapter{Software}
 \section{Compiling}
-The program uses Allegro to show the results. In theory it should be possible to use it on any machine, which supports linux and opengl, I tested it on a x86 platform and on the raspberry pi. If not already done you have to install the following packages:
+The program uses Allegro to show the results. In theory it should be possible to use it on any machine, which supports linux and opengl, I tested it on a x86 platform and on the raspberry pi. If you are using debian, please install the following packages:
+\begin{lstlisting}[language=bash,caption={Required packages},breaklines=true]
+sudo aptitude install liballegro5-dev freeglut3-dev libboost-thread-dev libboost-system-dev
+\end{lstlisting}
+Then build with
+\begin{lstlisting}[language=bash,caption={Compile},breaklines=true]
+mkdir -p build; make -j 4 program
+\end{lstlisting}
 \section{Controls}
 There are 4 inputs at which the program listenens to which can generate events which will be handled by the program.
 \begin{table}[H]
