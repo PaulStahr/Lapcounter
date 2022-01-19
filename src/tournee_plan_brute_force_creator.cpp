@@ -69,8 +69,7 @@ void brute_force_tournee_plan_creator::create_plan(){
 
     delete possible_rounds;
 
-    delete round_slot_to_player;
-    
+    delete[] round_slot_to_player;
     delete[] player_slot_to_racecount;
     delete[] player_player_to_racecount;
     copy_plan(race_table);

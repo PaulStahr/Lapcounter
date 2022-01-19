@@ -131,7 +131,7 @@ void approximate_tournee_plan_creator::push_test(int round){
 
 void approximate_tournee_plan_creator::replace_last_test(uint8_t* replacement){
     if (stack_depth<1)
-        std::cout<<"error 1"<<std::endl;
+        throw std::runtime_error("Stack underflow");
     replace(stack_to_round[stack_depth-1], replacement);
 }
 
