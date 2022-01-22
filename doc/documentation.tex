@@ -18,7 +18,7 @@
 %OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 %SOFTWARE.
 
-\documentclass[11pt, a4paper, UKenglish, parskip=half+]{scrbook}
+\documentclass[11pt, a4paper, UKenglish, parskip=half+, oneside]{scrbook}
 \usepackage{verbatim}
 \usepackage{float}
 \usepackage{wrapfig}
@@ -29,6 +29,7 @@
 \usepackage[siunitx]{circuitikz}
 \usepackage{tikz}
 \usetikzlibrary{fit}
+\usetikzlibrary{er,positioning}
 	\author{Paul Stahr}
 	\title{Lapcounter with Raspberry pi}
 
@@ -39,8 +40,11 @@
 
 \begin{document}
 \maketitle
+\chapter{Introduction}
+This is a testimonial for building a lapcounter for slotcars with the rasperry pi. It contains a guide how to wire the necessary hardware and also a program to cover the main functionality. Any feedback and improvement suggestions are very welcome.
 \chapter{Hardware}
-We used the raspberry pi 3 together with the official touchscreen-display. Other configurations were not tested but will work most propably without much configuration. Of course there are many different ways to detect if a car is driving through the start-line. We used a led which collects light which comes from above. Using the slot itself with a light barrier was promising but turned out to be not reliable.
+In my setup I used a raspberry pi 3, but I won't expect any problems using other versions.\\
+For checking if cars crossed the starting line it turned out to be most reliable to have fototransistors in the track and some leds above. Another promising attempt to use the slot itself turned out to miss the car occasionally as they hopped over the barrier from time to time. To have a compact device I used the 7" Touchscreen Display which could be directly connected.
 \section{Components}
 \begin{table}[H]
 \begin{tabular}{l l l l}
@@ -61,9 +65,30 @@ MT3608 & 1& & 3.29\\
 \end{table}
 
 \ctikzset{bipoles/length=1cm} % Controls bipoles scale
-
 \section{Wiring}
-To connect the display power, the illumination and the senors we will use the gpio of the raspberry pi. For the connection from the photodiode to the input-circuit we will use usb-connectors. The circuit \ref{timercirquit} pulls the voltage down for a defined amount of time, and doesn't allow retriggering during this time. In theory it would be possible to connect the raspberry pi directly to the photodiode, but I have not tested it. Also there would be some drawbacks. First you would be dependent on hardware interrupts, because a polling approach could miss the time when the light barrier is interrupted. Secondly this solution is much easier to debug, because you can see if an input was triggered.
+\begin{wrapfigure}{r}{0.7\textwidth}
+\begin{tikzpicture}[auto,node distance=1cm]
+\node[entity] (screen) {Screen}
+[grow=up,sibling distance=2cm];
+%child {node[attribute] {Attribute 2}};
+% Now place a relation (ID=rel1)
+%\node[relationship] (rel1) [below right = of screen] {Relation 1};
+% Now the 2nd entity (ID=rel2)
+\node[entity] (rpi) [right = of screen]	{Raspberry Pi};
+\node[entity] (ne) [below = of rpi]	{NE555};
+\node[entity] (ph) [right = of ne]	{Phototransistor};
+\node[entity] (power) [left = of screen]	{5V Power supply};
+\node[entity] (mt) [below = of power]	{MT3608};
+\node[entity] (led) [right = of mt]	{LED-Stripe};
+\path (screen) edge (rpi);
+\path (power) edge	(screen);
+\path (power) edge	(mt);
+\path (mt) edge	(led);
+\path (rpi) edge node {USB} (ne);
+\path (ne) edge	(ph);
+\end{tikzpicture}
+\caption{High level connection Diagram}
+\end{wrapfigure}
 \begin{wrapfigure}{r}{0.4\textwidth}
 	\begin{tikzpicture}[scale=0.7]
 	\draw[color=lightgray] (0.5,-0.5) rectangle (2.5,10);
@@ -97,7 +122,11 @@ To connect the display power, the illumination and the senors we will use the gp
 	\end{tikzpicture}
 \caption{Raspberry pi pinlayout}	
 \end{wrapfigure}
-\begin{wrapfigure}{r}{0.6\textwidth}
+To connect the display power, the illumination and the senors we will use the gpio of the raspberry pi. For the connection from the photodiode to the input-circuit I uses usb-connectors. I put the \ref{timercirquit} between the photodiode and the input of the raspberry pi, which pulls down the voltage for a defined amount of time whenever a car crosses.
+\subsection{GPIO}
+The gpio of the raspberry pi provides low level commiunication with electric circuits. Here is a complete diagram of all connectors. Please notice that the 3.3V are provided by the integrated voltage regulator and only allow very small loads.
+
+\begin{wrapfigure}{r}{0.7\textwidth}
 \label{timercirquit}
 \begin{tikzpicture}[font=\small]
 
@@ -124,7 +153,7 @@ To connect the display power, the illumination and the senors we will use the gp
 %Place polarization nodes:
 \draw (-4.5,3.5) node[ocirc] (VCC){} node[left]{$\mathsf{V_{CC}}$};
 \draw (-4.5,-4) node[ocirc] (GND){} node[left]{GND};
-\draw (-4.5,-1.5) node[ocirc] (INPUT){} node[left]{Input};
+\draw (-4.5,-1.5) node[ocirc] (INPUT){} node[left]{Input PH};
 \draw(VCC) % Start point
 to [short, o-] ++(1,0) coordinate (NOD1) % Use auxiliar coordinate (NOD1)
 to [R, l^=100k,*-*] (1 DIS -| NOD1) % to the point in the intersection between NOD1 and 1 DIS
@@ -147,25 +176,58 @@ to [short] (GND);
 %\draw[color=blue,line width=2] (1 TRG) to [short] ++(-0.55,0) node[ocirc] (TRG){} node[below]{Trigger};
 %\draw(1 TRG) to [short] ++(-2,0) (TRG){};
 \draw(1 TRG) to [eC,l_=0.01nF, -*] (1 TRG |- GND);
-\draw (1 OUT) to [R, l^=$10$k, -*] ++ (2,0) node[below]{Out};
+\draw (1 OUT) to [R, l^=$10$k, -*] ++ (2,0) node[right]{Out RPI};
 \draw (1 OUT) to [R,l^=1k, *-] ++ (0,-2) to [empty led] (1 OUT |- GND) to (GND);
 %\draw[color=red,line width=2] (1 OUT) to [short] ++(0.55,0) node[ocirc](OUT){} node[below]{Out};
 \end{scope}
 \end{tikzpicture}
-\begin{tikzpicture}
- \begin{scope}[shift={(-7,0)}]
-\draw[color=lightgray] (0.5,-0.5) rectangle (1.5,3.5);
- \draw (0,0) node[ocirc] (GND){} node[left]{GND};
- \draw (0,3) node[ocirc] (VCC){} node[left]{$\mathsf{V_{CC}}$};
- \draw (0,1.5) node[ocirc] (OUT){} node[left]{Out};
- \draw(VCC) to [short] ++ (1,0) to [empty photodiode] ++ (0,-1.5) to [R] ++(0,-1.5) to [short] (GND);
- \draw (OUT) to [short, -*] ++ (1,0);
- \end{scope}
- \end{tikzpicture}
-\caption{Wiring digram}
+\caption{Delay circuit}
 \end{wrapfigure}
-
-
+\subsection{NE-555}
+The timer NE-555 is maybe the most often produced integrated circuit in history. It allows us to work as a delay, extending the signal of a led covered for a short amount of time to trigger a signal which lasts over a second. As the raspberry pi supports interrupts it should be possible to directly connect the phototransistor to its gpio input.
+\begin{wrapfigure}{r}{0.2\textwidth}
+\begin{tikzpicture}
+\begin{scope}[shift={(-7,0)}]
+\draw[color=lightgray] (0.5,-0.5) rectangle (1.5,3.5);
+\draw (0,0) node[ocirc] (GND){} node[left]{GND};
+\draw (0,3) node[ocirc] (VCC){} node[left]{$\mathsf{V_{CC}}$};
+\draw (0,1.5) node[ocirc] (OUT){} node[left]{Out};
+\draw(VCC) to [short] ++ (1,0) to [empty photodiode] ++ (0,-1.5) to [R] ++(0,-1.5) to [short] (GND);
+\draw (OUT) to [short, -*] ++ (1,0);
+\end{scope}
+\end{tikzpicture}
+\caption{Photodiode}
+\end{wrapfigure}
+\subsection{Connectors}
+As you have to put the phototransistors into the racetrack you might not want to have fixed cables running all the way up to the GPIO of the Raspberry pi. You can use any connector you like, but I found usb very handy because this allowed me to just solder Type-A and Mini-A connectors on all boards and use ordinary cables for the connections in between. I tried to keep as close to the original standart as possible by using the outer lanes for power supply and the inner one for data transmition.
+\begin{wrapfigure}{r}{0.6\textwidth}
+	\begin{tikzpicture}[scale=0.7]
+	\filldraw[fill=white, draw=black, rounded corners] (-2.1,0.1) rectangle (2.1,-1.5);
+	\filldraw[fill=lightgray, draw=black, rounded corners] (-2.0,0) rectangle (2.0,-1.4);
+	\filldraw[fill=gray, draw=black, rounded corners] (-2,0) rectangle (2,-0.8);
+	\foreach \i/\t in {-1.5/-,-0.5/D+,0.5/D-,1.5/+}
+	{
+		\filldraw[fill=yellow, draw=black] (\i-0.3,-.7) rectangle node[yshift=1.0cm]{\small \t} (\i+0.3,-0.9) ;
+	}
+	\node at (0,-2) {\small \textbf{Type-A}};
+	\end{tikzpicture}
+	\begin{tikzpicture}[scale=0.7]
+	\fill[fill=white, draw=black,rounded corners] 
+	(-1.6,0.2) -- (1.6,0.2) -- (2.6,-0.5) -- (2.6,-1.5) -- (-2.6,-1.5) -- (-2.6,-0.5) -- cycle;
+	\fill[fill=lightgray, draw=black,rounded corners] 
+	(-1.5,0.1) -- (1.5,0.1) -- (2.5,-0.6) -- (2.5,-1.4) -- (-2.5,-1.4) -- (-2.5,-0.6) -- cycle;
+	\fill[fill=gray, draw=black,rounded corners] 
+	(-1.5,0.1) -- (1.5,0.1) -- (2.5,-0.6) -- (2.5,-0.8) -- (-2.5,-0.8) -- (-2.5,-0.6) -- cycle;
+	\foreach \i/\t in {-2/-,-1/ID,0/D+,1/D-,2/+}
+	{
+		\filldraw[fill=yellow, draw=black] (\i-0.3,-.7) rectangle node[yshift=1.0cm]{\small \t} (\i+0.3,-0.9) ;
+	}
+	\node at (0,-2) {\small\textbf{Mini-A}};
+	\end{tikzpicture}
+	\caption{USB-Pins}
+\end{wrapfigure}
+\subsection{Illumination}
+For illumination it was conventient to use led-stripe. The general problem here is, that most of them work with 12V. Also you might want to have an adjustable brightness. For these kind of tasks a MT3608 Step Up converter is a cheap and handy solution. Just connect it to the 5V supply and the led-stripe to its output.
 \begin{wrapfigure}{r}{0.6\textwidth}
 \begin{tikzpicture}
 \begin{scope}[shift={(-2,6.5)}]
@@ -198,9 +260,9 @@ to [short] (GND);
 \draw(1 GND) to [short, -*] ++(-0.5,0);
 \draw(1 VOUT) to [short, -] (2 VIN);
 \draw(1 GNDD) to [short, -] (2 GND);
-
 \end{scope}
 \end{tikzpicture}
+\caption{Power supply for Led-stripe}
 \end{wrapfigure}
 \begin{comment}
 
@@ -236,34 +298,7 @@ to [short] (GND);
 %\node at (2.2, .8) {\textbf{5}}; \node at (3, .8) {\textbf{4}}; \node at (3.8, .8) {\textbf{3}}; \node at (4.6, .8) {\textbf{2}}; \node at (5.4, .8) {\textbf{1}};
 \end{tikzpicture}
 \end{comment}
-\subsection{Usb}
-For the connections to the light barrier and the electronic I used usb connectors, namely the Type-A and Mini-A ones. I adapted the power supply lanes but used the data lanes for the light-barrier-signal.
-\begin{figure}[H]
-\begin{tikzpicture}[scale=0.7]
-\filldraw[fill=white, draw=black, rounded corners] (-2.1,0.1) rectangle (2.1,-1.5);
-\filldraw[fill=lightgray, draw=black, rounded corners] (-2.0,0) rectangle (2.0,-1.4);
-\filldraw[fill=gray, draw=black, rounded corners] (-2,0) rectangle (2,-0.8);
-\foreach \i/\t in {-1.5/-,-0.5/D+,0.5/D-,1.5/+}
-{
-\filldraw[fill=yellow, draw=black] (\i-0.3,-.7) rectangle node[yshift=1.6cm]{\small \t} (\i+0.3,-0.9) ;
-}
-\node at (0,-2) {\small \textbf{Type-A}};
-\end{tikzpicture}
-\begin{tikzpicture}[scale=0.7]
-\fill[fill=white, draw=black,rounded corners] 
-(-1.6,0.2) -- (1.6,0.2) -- (2.6,-0.5) -- (2.6,-1.5) -- (-2.6,-1.5) -- (-2.6,-0.5) -- cycle;
-\fill[fill=lightgray, draw=black,rounded corners] 
-(-1.5,0.1) -- (1.5,0.1) -- (2.5,-0.6) -- (2.5,-1.4) -- (-2.5,-1.4) -- (-2.5,-0.6) -- cycle;
-\fill[fill=gray, draw=black,rounded corners] 
-(-1.5,0.1) -- (1.5,0.1) -- (2.5,-0.6) -- (2.5,-0.8) -- (-2.5,-0.8) -- (-2.5,-0.6) -- cycle;
-\foreach \i/\t in {-2/-,-1/ID,0/D+,1/D-,2/+}
-{
-	\filldraw[fill=yellow, draw=black] (\i-0.3,-.7) rectangle node[yshift=1.6cm]{\small \t} (\i+0.3,-0.9) ;
-}
-\node at (0,-2) {\small\textbf{Mini-A}};
-\end{tikzpicture}
-\caption{USB-Pins}
-\end{figure}
+
 \begin{comment}
 	
 \begin{tikzpicture}[scale=2]
@@ -318,7 +353,7 @@ For the connections to the light barrier and the electronic I used usb connector
 \section{Compiling}
 The program uses Allegro to show the results. In theory it should be possible to use it on any machine, which supports linux and opengl, I tested it on a x86 platform and on the raspberry pi. If you are using debian, please install the following packages:
 \begin{lstlisting}[language=bash,caption={Required packages},breaklines=true]
-sudo aptitude install liballegro5-dev freeglut3-dev libboost-thread-dev libboost-system-dev
+sudo aptitude install build-essential g++ liballegro5-dev freeglut3-dev libboost-thread-dev libboost-system-dev
 \end{lstlisting}
 Then build with either
 \begin{lstlisting}[language=bash,caption={Compile},breaklines=true]
@@ -327,6 +362,10 @@ mkdir -p build; make -j 4 program
 Or if you are using the rasperry-pi
 \begin{lstlisting}[language=bash,caption={Compile Pi},breaklines=true]
 mkdir -p build; make -j 4 programpi
+\end{lstlisting}
+This will create a binary which you can start with
+\begin{lstlisting}[language=bash,caption={Run Lapcounter},breaklines=true]
+./programpi
 \end{lstlisting}
 \section{Controls}
 There are 4 inputs at which the program listenens to which can generate events which will be handled by the program.
