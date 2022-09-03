@@ -40,6 +40,12 @@ program: $(BUILD)/main.o $(OFILES)
 programpi: $(BUILD)/mainpi.o $(OFILES)
 	g++ $(OFILES) $(BUILD)/mainpi.o -g $(CFLAGS) $(allegro-config --libs) -DRASPBERRY_PI -lwiringPi -lallegro $(ALLEGRO_FLAGS) -lboost_thread -lboost_system -lglut -lGL -o programpi libws2811.a
 
+define build_plan
+plans/plan_$i_$j.html: program
+	-./program --print_plan $i 4 $j 2 plans/plan_$i_$j.html
+endef
+$(foreach i, 8 9 10 11 12, $(foreach j, 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24, $(eval $(call build_plan))))
+
 #program: main.cpp dat.o loghtml.o server.o query_performance_counter.o tournee_plan_creator.o performance_counter.o tournee_plan_brute_force_creator.o tournee_plan_approximation_creator.o
 #	g++ main.cpp dat.o loghtml.o server.o query_performance_counter.o tournee_plan_creator.o performance_counter.o tournee_plan_brute_force_creator.o tournee_plan_approximation_creator.o -g $(CFLAGS) $(allegro-config --libs) -lallegro $(ALLEGRO_FLAGS) -lboost_thread -lboost_system -o program
 
