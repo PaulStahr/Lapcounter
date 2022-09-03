@@ -35,6 +35,7 @@ class approximate_tournee_plan_creator: public tournee_plan_creator{
 	uint8_t** round_slot_to_player;
 	uint16_t* player_slot_to_racecount;
 	uint8_t* player_player_to_racecount;
+    uint8_t* player_player_equal_hardness_racecount;
 	uint16_t* player_to_racecount;
 	bool* round_to_isreplaced;
 

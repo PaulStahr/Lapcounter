@@ -46,6 +46,8 @@ class tournee_plan_creator{
 	size_t slots;
 	int play_against_max;
 	int play_against_min;
+    int play_against_equal_min;
+    int play_against_equal_max;
 	int play_against_max_count;
 	int max_play_on_slot;
 	int max_play;

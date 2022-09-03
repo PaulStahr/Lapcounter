@@ -34,6 +34,7 @@ void approximate_tournee_plan_creator::create_plan(){
 
     rating = relative_rating = play_against_min * (player * (player - 1)) / 2;
     std::cout << player << '*' << play_against_min << std::endl;
+    std::cout << player << '*' << play_against_equal_min << std::endl;
     stack_depth = 0;
 
     round_slot_to_player = new uint8_t*[rounds];
@@ -51,6 +52,9 @@ void approximate_tournee_plan_creator::create_plan(){
     player_player_to_racecount = new uint8_t[player * player];
     std::fill(player_player_to_racecount, player_player_to_racecount + player * player, 0);
 
+    player_player_equal_hardness_racecount = new uint8_t[player * player];
+    std::fill(player_player_equal_hardness_racecount, player_player_equal_hardness_racecount + player * player, 0);
+
     player_to_racecount = new uint16_t[player];
     std::fill(player_to_racecount, player_to_racecount + player, 0);
 
@@ -64,6 +68,7 @@ void approximate_tournee_plan_creator::create_plan(){
 
     delete[] player_slot_to_racecount;
     delete[] player_player_to_racecount;
+    delete[] player_player_equal_hardness_racecount;
     delete[] round_slot_to_player;
     delete[] round_to_isreplaced;
     delete[] player_to_racecount;
@@ -87,6 +92,17 @@ void approximate_tournee_plan_creator::insert_round(int round, uint8_t* new_slot
             uint8_t b1 = new_slot_to_player[j];
             relative_rating -= (++player_player_to_racecount[a1 * player + b1]) <= play_against_min;
             ++player_player_to_racecount[b1 * player + a1];
+        }
+    }
+    for (size_t k = 0; k < slots/equal_hard_slots; ++k){
+        for (size_t i=1;i<equal_hard_slots;i++){
+            uint8_t a1 = new_slot_to_player[i + k * equal_hard_slots];
+            for (size_t j = 0; j <i; ++j)
+            {
+                uint8_t b1 = new_slot_to_player[j + k * equal_hard_slots];
+                relative_rating += (++player_player_equal_hardness_racecount[a1 * player + b1]) > play_against_equal_max;
+                ++player_player_equal_hardness_racecount[b1 * player + a1];
+            }
         }
     }
     rating = relative_rating;// + absolute_rating();
@@ -114,6 +130,20 @@ void approximate_tournee_plan_creator::replace(size_t round, uint8_t* new_slot_t
             uint8_t b1 = new_slot_to_player[j];
             relative_rating += (player_player_to_racecount[b0 * player + old_player] = --player_player_to_racecount[old_player * player + b0]) < play_against_min;
             relative_rating -= (player_player_to_racecount[b1 * player + new_player] = ++player_player_to_racecount[new_player * player + b1]) <= play_against_min;
+        }
+    }
+    
+    for (size_t k = 0; k < slots/equal_hard_slots; ++k){
+        size_t offset = k * equal_hard_slots;
+        for (size_t i=1;i<equal_hard_slots;i++){
+            uint8_t old_player = old_slot_to_player[i + offset];
+            uint8_t new_player = new_slot_to_player[i + offset];
+            for (size_t j=0;j<i;j++){
+                uint8_t b0 = old_slot_to_player[j + offset];
+                uint8_t b1 = new_slot_to_player[j + offset];
+                relative_rating -= (player_player_equal_hardness_racecount[b0 * player + old_player] = --player_player_equal_hardness_racecount[old_player * player + b0]) >= play_against_equal_max;
+                relative_rating += (player_player_equal_hardness_racecount[b1 * player + new_player] = ++player_player_equal_hardness_racecount[new_player * player + b1]) > play_against_equal_max;
+            }
         }
     }
     rating = relative_rating;

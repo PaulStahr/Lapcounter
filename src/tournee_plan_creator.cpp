@@ -22,6 +22,9 @@ SOFTWARE.
 #include "tournee_plan_creator.h"
 #include <boost/thread.hpp>
 
+template <typename T>
+T div_round_up(T up, T down){return (up + down - 1) / down;}
+
 tournee_plan_creator::tournee_plan_creator(size_t pl, size_t sl, size_t ro, size_t equal_slots){
     equal_hard_slots = equal_slots;
     rounds = ro;
@@ -33,8 +36,10 @@ tournee_plan_creator::tournee_plan_creator(size_t pl, size_t sl, size_t ro, size
     max_play = (rounds * slots + player-1) / player;
     max_play_on_slot = (max_play * equal_hard_slots + slots - 1) / slots;
     play_against_total = slots * rounds * (slots-1) / player;
-    play_against_min = (rounds * slots * (slots-1)) / (player * (player - 1));
-    play_against_max = (rounds * slots * (slots-1) + (player * (player - 1)) - 1) / (player * (player - 1));
+    play_against_min        = (rounds * slots * (slots-1))              / (player * (player - 1));
+    play_against_equal_min  = (rounds * slots * (equal_hard_slots - 1)) / (player * (player - 1));
+    play_against_max        = div_round_up(rounds * slots * (slots-1),              player * (player - 1));
+    play_against_equal_max  = div_round_up(rounds * slots * (equal_hard_slots - 1), player * (player - 1));
     play_against_max_count = play_against_total - play_against_min * max_play;
 
     possible_rounds = new uint8_t[possible_round_count * slots];
