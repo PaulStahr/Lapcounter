@@ -1,6 +1,7 @@
 #ifndef OPTIONS_H
 #define OPTIONS_H
 
+#include <stdint.h>
 #include <array>
 
 struct options_t
