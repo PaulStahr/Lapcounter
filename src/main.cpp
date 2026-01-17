@@ -192,6 +192,11 @@ void allegro_input_task(InputHandler *handler)
     {
         ALLEGRO_EVENT ev;
         al_wait_for_event(event_queue, &ev);
+        if (ev.type == ALLEGRO_EVENT_JOYSTICK_CONFIGURATION)
+        {
+            al_reconfigure_joysticks();
+            continue;
+        }
         Destination dest = DUNDEF;
         size_t buttonSize = 40;
         if (ev.type == ALLEGRO_EVENT_JOYSTICK_AXIS)
