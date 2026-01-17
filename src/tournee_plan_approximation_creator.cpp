@@ -23,7 +23,8 @@ SOFTWARE.
 #include <vector>
 #include <limits>
 #include <algorithm>
-#include <random>   
+#include <random>
+#include <stdexcept>
 #include "./tournee_plan_approximation_creator.h"
 
 approximate_tournee_plan_creator::approximate_tournee_plan_creator(int pl, int sl, int ro, int sl_eq) : tournee_plan_creator(pl, sl, ro, sl_eq){}
