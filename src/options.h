@@ -1,7 +1,7 @@
 #ifndef OPTIONS_H
 #define OPTIONS_H
 
-#include <stdint.h>
+#include <cstdint>
 #include <array>
 #include <iosfwd>
 
